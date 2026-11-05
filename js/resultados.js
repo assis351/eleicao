@@ -43,7 +43,7 @@ function iniciarResultados(container, opcoes = {}) {
       return;
     }
     // só redesenha se algo mudou (evita a tela "piscar")
-    const nova = JSON.stringify(dados.categories) + dados.totalBallots + dados.totalVoters + dados.minPercent;
+    const nova = JSON.stringify(dados.categories) + dados.totalBallots + dados.totalVoters + dados.minPercent + dados.requireId;
     ultimo = dados;
     if (nova === assinatura) {
       const hora = $(".hora-atualizacao", container);
@@ -58,8 +58,9 @@ function iniciarResultados(container, opcoes = {}) {
     container.innerHTML = `
       <div class="resumo">
         <div class="card numero destaque"><div class="r">Votos computados</div><div class="v">${r.totalBallots}</div></div>
+        ${r.requireId ? `
         <div class="card numero"><div class="r">Eleitores cadastrados</div><div class="v">${r.totalVoters}</div></div>
-        <div class="card numero"><div class="r">Participação</div><div class="v">${porcentagem(r.participation)}</div></div>
+        <div class="card numero"><div class="r">Participação</div><div class="v">${porcentagem(r.participation)}</div></div>` : ""}
       </div>
 
       <div class="barra-acoes">
