@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#22341a">
+  <title>Eleição de Liderança 2026</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- TELA INICIAL (boas-vindas) -->
+  <main class="inicio">
+    <div class="inicio-centro">
+      <img id="logo" class="logo-completa" src="img/logo.png" alt="Igreja Cristã Presbiteriana Missionária">
+
+      <div class="ornamento">✦</div>
+
+      <h1 id="titulo">Eleição de Liderança 2026</h1>
+
+      <p class="chamada">
+        Escolha em oração os irmãos que servirão como <strong>Pastores</strong>,
+        <strong>Presbíteros</strong> e <strong>Diáconos</strong>. Seu voto é secreto.
+      </p>
+
+      <!-- Preenchido pelo JavaScript conforme a situação da votação -->
+      <div id="acao" class="mt-g" style="width:100%">
+        <p class="texto-suave">Carregando…</p>
+      </div>
+
+      <p id="periodo" class="pequeno texto-suave mt"></p>
+      <a id="link-resultados" class="pequeno oculto mt" href="resultados.html" style="font-weight:600">Ver resultados</a>
+    </div>
+    <div class="faixa" style="height:8px"></div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/comum.js"></script>
+  <script>
+    (async function () {
+      const { ok, dados } = await chamar("info");
+      const acao = $("#acao");
+      if (!ok) {
+        acao.innerHTML = `<div class="alerta erro">${esc(dados.error || "Não foi possível carregar. Tente novamente em instantes.")}</div>`;
+        return;
+      }
+      document.title = dados.title;
+      $("#titulo").textContent = dados.title;
+      if (dados.logo_url) $("#logo").src = dados.logo_url;
+
+      if (dados.status === "open") {
+        acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação</a>`;
+      } else if (dados.status === "not_started") {
+        acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
+          <strong>Votação ainda não começou</strong>
+          <span class="pequeno">Início: ${dataHora(dados.start_at)}</span></div>`;
+      } else {
+        acao.innerHTML = `<div class="caixa-status" style="background:var(--laranja-100)">
+          <strong>Votação encerrada</strong>
+          <span class="pequeno">Obrigado a todos que participaram.</span></div>`;
+      }
+      if (dados.start_at || dados.end_at) {
+        $("#periodo").textContent = `Período: ${dataHora(dados.start_at)} até ${dataHora(dados.end_at)}`;
+      }
+      if (dados.results_public) $("#link-resultados").classList.remove("oculto");
+    })();
+  </script>
+</body>
+</html>

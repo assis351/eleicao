@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#22341a">
+  <title>Resultado da Eleição</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- PÁGINA PÚBLICA DE RESULTADOS
+       Só mostra os números quando o admin liga "Mostrar resultados ao público". -->
+  <header class="topo">
+    <div class="topo-conteudo">
+      <span id="selo"></span>
+      <div class="titulo" style="font-size:22px">Resultado da Eleição</div>
+      <div class="acoes"><a href="index.html">Início</a></div>
+    </div>
+    <div class="faixa"></div>
+  </header>
+  <main class="conteudo largo" id="resultados"></main>
+
+  <script src="js/config.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="js/resultados.js"></script>
+  <script>
+    $("#selo").innerHTML = seloLogo(null, 42);
+    iniciarResultados($("#resultados"));
+  </script>
+</body>
+</html>
