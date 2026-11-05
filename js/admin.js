@@ -414,6 +414,12 @@ function desenharConfig(msg = "") {
         <span><strong>Mostrar resultados ao público</strong><br>
           <span class="pequeno texto-suave">Desligado: só você vê, aqui no painel. Ligado: qualquer pessoa vê em <code>/resultados</code>.</span></span>
       </label>
+      <label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;margin-top:18px">
+        <input id="g-id" type="checkbox" style="width:22px;height:22px;margin-top:3px;accent-color:#e8792a" ${cfg.require_id ? "checked" : ""}>
+        <span><strong>Pedir nome e CPF antes de votar</strong><br>
+          <span class="pequeno texto-suave">Desligado: o membro vai direto para a cédula (só bloqueia um 2º voto no mesmo aparelho).
+          Ligado: só vota quem está na lista de Eleitores, uma única vez.</span></span>
+      </label>
       <div class="zona-perigo mt-g">
         <strong>Zerar votação</strong>
         <p class="pequeno" style="margin:4px 0 12px">Apaga todos os votos. Use para limpar os testes antes da eleição real.</p>
@@ -434,6 +440,7 @@ function desenharConfig(msg = "") {
     cfg.start_at = paraISO($("#g-ini").value);
     cfg.end_at = paraISO($("#g-fim").value);
     cfg.results_public = $("#g-pub").checked;
+    cfg.require_id = $("#g-id").checked;
   };
 
   $("#g-logo").addEventListener("change", async (e) => {
