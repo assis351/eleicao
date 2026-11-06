@@ -54,7 +54,7 @@
 
       // texto conforme a etapa (1: Pastores/Presbíteros/Diáconos; 2: Tesoureiro; 3: Secretários; 4: Exame de Contas)
       if (dados.fase > 1) {
-        $("#chamada").innerHTML = `Etapa ${dados.fase} de 4: escolha em oração para <strong>${esc(dados.fase_label)}</strong>. Seu voto é secreto.`;
+        $("#chamada").innerHTML = `Etapa ${dados.fase} de ${(dados.fases || []).length}: escolha em oração para <strong>${esc(dados.fase_label)}</strong>. Seu voto é secreto.`;
       }
       if (dados.status === "open") {
         acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação${dados.fase > 1 ? " · " + esc(dados.fase_label) : ""}</a>`;
