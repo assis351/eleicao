@@ -73,7 +73,7 @@ function dispararAviso(info) {
     <div class="aviso-etapa-caixa">
       <div class="aviso-etapa-sino" aria-hidden="true">🔔</div>
       <h2>A votação está aberta!</h2>
-      <p>Etapa ${info.fase} de 4<br><strong>${esc(info.fase_label)}</strong></p>
+      <p>Etapa ${info.fase} de ${(info.fases || []).length || 5}<br><strong>${esc(info.fase_label)}</strong></p>
       <a class="btn btn-principal btn-grande largura-total" href="votar.html">Votar agora</a>
     </div>`;
   document.body.appendChild(fundo);
