@@ -81,7 +81,7 @@ function iniciarResultados(container, opcoes = {}) {
       <p class="pequeno texto-suave">Os percentuais de SIM, NÃO e BRANCO são sobre todos os votos daquele nome.
         Etapa 1: é <strong>eleito</strong> quem tiver <strong>mais de ${r.minPercent}%</strong> de SIM
         ${r.brancosContam ? "contando os votos em branco" : "sobre os votos válidos (SIM + NÃO; o branco não entra nessa conta)"}.
-        ${r.fase > 1 ? "Etapas 2 a 4: os cargos vão para os mais votados (1º lugar, 2º lugar…)." : ""}</p>
+        ${r.fase > 1 ? "Da etapa 2 em diante, os cargos vão para os mais votados (1º lugar, 2º lugar…)." : ""}</p>
 
       ${r.fase > 1 ? quadroCargos(r) : ""}
       ${r.categories.slice().reverse().map(blocoCategoria).join("")}`;
@@ -105,7 +105,7 @@ function iniciarResultados(container, opcoes = {}) {
     r.categories.filter((c) => c.fase > 1).forEach((cat) => {
       const ganhos = cat.candidates.filter((c) => c.status === "eleito");
       const empate = cat.candidates.some((c) => c.status === "empate");
-      if (ganhos.length) ganhos.forEach((c) => linhas.push([c.cargo, c.name]));
+      if (ganhos.length) ganhos.filter((c) => !cat.demais || c.cargo !== cat.demais).forEach((c) => linhas.push([c.cargo, c.name]));
       else linhas.push([cat.label, empate ? "Empate — refazer a votação" : (cat.fase === r.fase && r.faseAberta ? "Votação em andamento" : "Aguardando votos")]);
       if (empate && ganhos.length) linhas.push([cat.label, "Empate em uma das vagas"]);
     });
