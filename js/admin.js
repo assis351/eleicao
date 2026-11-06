@@ -1,11 +1,20 @@
 // ================================================================
 // PAINEL ADMINISTRATIVO
-// Abas: Resultados | Candidatos | Eleitores | Configurações
+// Abas: Resultados | Etapas | Candidatos | Eleitores | Configurações
 // ================================================================
 const CATEGORIAS = [
-  { key: "pastor", label: "Pastores", singular: "Pastor" },
-  { key: "presbitero", label: "Presbíteros", singular: "Presbítero" },
-  { key: "diacono", label: "Diáconos", singular: "Diácono" },
+  { key: "pastor", label: "Pastores", singular: "Pastor", fase: 1 },
+  { key: "presbitero", label: "Presbíteros", singular: "Presbítero", fase: 1 },
+  { key: "diacono", label: "Diáconos", singular: "Diácono", fase: 1 },
+  { key: "tesoureiro", label: "Tesoureiro (etapa 2)", singular: "Tesoureiro", fase: 2 },
+  { key: "secretario", label: "1º e 2º Secretário (etapa 3)", singular: "Secretário", fase: 3 },
+  { key: "exame", label: "Exame de Contas (etapa 4)", singular: "Exame de Contas", fase: 4 },
+];
+const FASES = [
+  { n: 1, label: "Pastores, Presbíteros e Diáconos", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
+  { n: 2, label: "Tesoureiro", como: "Candidatos = presbíteros eleitos na etapa 1. Cada membro escolhe 1 nome (ou vota em branco); o mais votado é o Tesoureiro." },
+  { n: 3, label: "1º e 2º Secretário", como: "Candidatos = presbíteros eleitos, menos o Tesoureiro. SIM, NÃO ou BRANCO; 1º lugar = 1º Secretário, 2º lugar = 2º Secretário." },
+  { n: 4, label: "Exame de Contas", como: "Você cadastra os nomes na hora (aba Candidatos). SIM, NÃO ou BRANCO; os mais votados ocupam as vagas." },
 ];
 
 // ---------- Login ----------
@@ -67,6 +76,7 @@ $$(".abas button").forEach((b) =>
     $$(".abas button").forEach((x) => x.classList.toggle("ativa", x === b));
     $$("main > section").forEach((s) => s.classList.add("oculto"));
     $(`#aba-${b.dataset.aba}`).classList.remove("oculto");
+    if (b.dataset.aba === "etapas") abaEtapas();
     if (b.dataset.aba === "candidatos") abaCandidatos();
     if (b.dataset.aba === "eleitores") abaEleitores();
     if (b.dataset.aba === "config") abaConfig();
@@ -388,14 +398,24 @@ function desenharConfig(msg = "") {
 
     <section class="card pad">
       <div class="titulo-card">Critério de eleição</div>
-      <p class="pequeno texto-suave" style="margin-top:0">Cada membro vota <strong>SIM</strong> ou <strong>NÃO</strong> em cada candidato.
+      <p class="pequeno texto-suave" style="margin-top:0">Cada membro vota <strong>SIM</strong>, <strong>NÃO</strong> ou <strong>BRANCO</strong> em cada candidato.
         É eleito quem tiver a porcentagem de SIM (sobre SIM + NÃO dele) <strong>maior</strong> que o valor abaixo.</p>
       <label class="rotulo" for="g-min">Precisa ter mais de … % de SIM</label>
       <div style="display:flex;align-items:center;gap:8px">
         <input id="g-min" type="number" min="0" max="99" class="campo" style="width:110px;text-align:center" value="${cfg.min_percent}">
         <strong style="font-size:20px">%</strong>
       </div>
-      <p class="pequeno texto-suave">50 = maioria simples (metade + 1). Use 66 para dois terços, se o estatuto exigir.</p>
+      <p class="pequeno texto-suave">50 = maioria simples (metade + 1). Use 66 para dois terços, se o estatuto exigir.
+        Vale para a etapa 1 (Pastores, Presbíteros e Diáconos).</p>
+      <label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;margin-top:14px">
+        <input id="g-brancos" type="checkbox" style="width:22px;height:22px;margin-top:3px;accent-color:#e8792a" ${cfg.brancos_contam ? "checked" : ""}>
+        <span><strong>Contar votos em branco no cálculo</strong><br>
+          <span class="pequeno texto-suave">Desligado (padrão): a % para ser eleito usa só SIM + NÃO. Ligado: o branco também entra
+          na conta (e dificulta a eleição). O resultado sempre mostra SIM, NÃO e BRANCO com as suas %.</span></span>
+      </label>
+      <label class="rotulo" for="g-vagas" style="margin-top:14px">Vagas no Exame de Contas (etapa 4)</label>
+      <input id="g-vagas" type="number" min="1" max="20" class="campo" style="width:110px;text-align:center" value="${cfg.vagas_exame || 3}">
+      <p class="pequeno texto-suave">Os mais votados (por número de SIM) ocupam essas vagas.</p>
     </section>
 
     <section class="card pad">
@@ -404,7 +424,8 @@ function desenharConfig(msg = "") {
         <input id="g-ini" type="datetime-local" class="campo" value="${paraCampo(cfg.start_at)}"></div>
       <div class="grupo"><label class="rotulo" for="g-fim">Fim</label>
         <input id="g-fim" type="datetime-local" class="campo" value="${paraCampo(cfg.end_at)}"></div>
-      <p class="pequeno texto-suave">Deixe em branco para não ter limite. Use o horário do seu computador.</p>
+      <p class="pequeno texto-suave">Deixe em branco para não ter limite. Use o horário do seu computador.
+        Vale só para a etapa 1 — as etapas seguintes você abre e encerra na aba <strong>Etapas</strong>.</p>
     </section>
 
     <section class="card pad">
@@ -437,6 +458,8 @@ function desenharConfig(msg = "") {
     cfg.church_name = $("#g-igreja").value;
     cfg.title = $("#g-titulo").value;
     cfg.min_percent = $("#g-min").value;
+    cfg.vagas_exame = $("#g-vagas").value;
+    cfg.brancos_contam = $("#g-brancos").checked;
     cfg.start_at = paraISO($("#g-ini").value);
     cfg.end_at = paraISO($("#g-fim").value);
     cfg.results_public = $("#g-pub").checked;
@@ -469,4 +492,100 @@ function desenharConfig(msg = "") {
     if (!ok) return desenharConfig(dados.error || "Erro ao salvar.");
     abaConfig("Configurações salvas.");
   });
+}
+
+// ================================================================
+// ABA ETAPAS (controle da votação em 4 etapas)
+// ================================================================
+async function abaEtapas(msg = "", tipoMsg = "info") {
+  const caixa = $("#aba-etapas");
+  if (!caixa.innerHTML) caixa.innerHTML = '<p class="texto-suave">Carregando…</p>';
+  const [c, r] = await Promise.all([chamar("settings"), chamar("results")]);
+  if (sessaoExpirou(c.status) || sessaoExpirou(r.status)) return;
+  if (!c.ok || !r.ok) { caixa.innerHTML = `<div class="alerta erro">${esc((c.dados || r.dados).error || "Erro ao carregar.")}</div>`; return; }
+  const s = c.dados, res = r.dados;
+  const cand = await chamar("candidates");
+  const todos = cand.ok ? cand.dados.list : [];
+  const atual = s.fase, aberta = s.fase_aberta;
+  const prox = FASES[atual]; // próxima etapa (ou undefined na última)
+
+  const nomesDaFase = (n) => todos.filter((x) => CATEGORIAS.find((k) => k.key === x.category).fase === n);
+  const cargosTexto = (n) => res.categories.filter((k) => k.fase === n).flatMap((k) =>
+    k.candidates.filter((x) => x.status === "eleito").map((x) => `${x.cargo || "Eleito"}: ${x.name}`));
+
+  const cartoes = FASES.map((f) => {
+    const estadoF = f.n < atual ? "concluida" : f.n === atual ? "atual" : "futura";
+    const nomes = nomesDaFase(f.n);
+    const votos = (res.fases || []).find((x) => x.n === f.n)?.ballots || 0;
+    let lista = "";
+    if (f.n === 1) lista = "";
+    else if (estadoF === "futura") lista = `<p class="pequeno texto-suave">A lista será montada quando você avançar para esta etapa.</p>`;
+    else lista = nomes.length
+      ? `<ul class="pequeno" style="margin:8px 0 0;padding-left:18px">${nomes.map((x) => `<li>${esc(x.name)}</li>`).join("")}</ul>`
+      : `<p class="pequeno" style="color:var(--vermelho-700)">Nenhum candidato ainda — cadastre na aba Candidatos.</p>`;
+    const resultado = f.n > 1 && estadoF !== "futura" && cargosTexto(f.n).length
+      ? `<p class="pequeno" style="margin:8px 0 0"><strong>Resultado:</strong> ${cargosTexto(f.n).map(esc).join(" · ")}</p>` : "";
+    const selo = estadoF === "concluida" ? '<span class="etiqueta eleito">Concluída</span>'
+      : estadoF === "atual" ? `<span class="etiqueta ${aberta ? "primeiro" : "neutra"}">${aberta ? "Votação aberta" : "Votação encerrada"}</span>`
+      : '<span class="etiqueta neutra">Próxima</span>';
+    return `<div class="card pad" style="${estadoF === "atual" ? "border:2px solid var(--laranja-500)" : estadoF === "futura" ? "opacity:.7" : ""}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+        <strong style="font-size:18px">Etapa ${f.n} · ${f.label}</strong>${selo}</div>
+      <p class="pequeno texto-suave" style="margin:6px 0 0">${f.como}</p>
+      ${estadoF !== "futura" ? `<p class="pequeno" style="margin:6px 0 0">${votos} voto(s) recebido(s)</p>` : ""}
+      ${lista}${resultado}
+    </div>`;
+  }).join("");
+
+  // botões conforme a situação
+  let botoes = "";
+  if (aberta) {
+    botoes = `<button class="btn btn-principal btn-grande" data-acao="fase_encerrar">Encerrar votação da etapa ${atual}</button>
+      <p class="pequeno texto-suave">Encerre quando todos tiverem votado. O resultado fica salvo e você confere antes de seguir.</p>`;
+  } else {
+    botoes = `<button class="btn btn-verde btn-grande" data-acao="fase_abrir">Abrir votação da etapa ${atual} · ${FASES[atual - 1].label}</button>`;
+    const votosAtual = (res.fases || []).find((x) => x.n === atual)?.ballots || 0;
+    if (prox && !votosAtual) botoes += `<p class="pequeno texto-suave">Esta etapa ainda não tem votos. Abra a votação; depois de encerrar,
+      aparece aqui o botão para preparar a etapa ${prox.n} (${prox.label}).</p>`;
+    if (prox && votosAtual) botoes += `<button class="btn btn-principal btn-grande" data-acao="fase_avancar">Preparar etapa ${prox.n} · ${prox.label} →</button>
+      <p class="pequeno texto-suave">"Preparar" monta a lista da próxima etapa com base no resultado desta. Ela começa
+      <strong>encerrada</strong>: confira os nomes e depois clique em "Abrir votação".</p>`;
+  }
+
+  caixa.innerHTML = `
+    ${msg ? `<div class="alerta ${tipoMsg}" style="margin-top:0;margin-bottom:16px">${esc(msg)}</div>` : ""}
+    <section class="card pad" style="margin-bottom:20px">
+      <div class="titulo-card">Etapa atual: ${atual} · ${esc(FASES[atual - 1].label)}</div>
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">${botoes}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+        ${atual > 1 ? `<button class="link-btn verde pequeno" data-acao="fase_voltar">← Voltar para a etapa ${atual - 1}</button>` : ""}
+        <button class="link-btn vermelho pequeno" data-acao="fase_zerar">Zerar votos desta etapa</button>
+      </div>
+      <p class="pequeno texto-suave" style="margin-bottom:0">Os membros usam sempre o mesmo link. Quando abrir uma etapa nova, avise no grupo
+        para que todos abram o site de novo.</p>
+    </section>
+    <div style="display:grid;gap:14px">${cartoes}</div>`;
+
+  $$("[data-acao]", caixa).forEach((b) => b.addEventListener("click", () => acaoEtapa(b.dataset.acao, b)));
+}
+
+async function acaoEtapa(acao, botao) {
+  const extra = {};
+  if (acao === "fase_encerrar" && !confirm("Encerrar a votação desta etapa? Ninguém mais conseguirá votar nela.")) return;
+  if (acao === "fase_voltar" && !confirm("Voltar uma etapa? Nada é apagado; a etapa anterior fica encerrada.")) return;
+  if (acao === "fase_zerar") {
+    if (prompt("Isso apaga os votos SÓ da etapa atual (as outras continuam).\nDigite ZERAR para confirmar:") !== "ZERAR") return;
+    extra.confirm = "ZERAR";
+  }
+  botao.disabled = true;
+  const { ok, status, dados } = await chamar(acao, extra);
+  if (sessaoExpirou(status)) return;
+  const mensagens = {
+    fase_encerrar: "Votação encerrada. Confira o resultado e, quando quiser, prepare a próxima etapa.",
+    fase_abrir: "Votação aberta! Avise os membros para abrirem o link de novo.",
+    fase_voltar: "Voltou uma etapa.",
+    fase_zerar: "Votos desta etapa apagados.",
+  };
+  if (!ok) return abaEtapas(dados.error || "Não foi possível concluir.", "erro");
+  abaEtapas(acao === "fase_avancar" ? `Etapa ${dados.fase} preparada. ${dados.aviso || ""} Confira os nomes e clique em "Abrir votação".` : mensagens[acao]);
 }
