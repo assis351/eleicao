@@ -6,17 +6,17 @@ const CATEGORIAS = [
   { key: "pastor", label: "Pastores", singular: "Pastor", fase: 1 },
   { key: "presbitero", label: "Presbíteros", singular: "Presbítero", fase: 1 },
   { key: "diacono", label: "Diáconos", singular: "Diácono", fase: 1 },
-  { key: "tesoureiro", label: "Tesoureiro (etapa 2)", singular: "Tesoureiro", fase: 2 },
-  { key: "secretario", label: "1º e 2º Secretário (etapa 3)", singular: "Secretário", fase: 3 },
-  { key: "exame", label: "Exame de Contas (etapa 4)", singular: "Exame de Contas", fase: 4 },
-  { key: "presidencia", label: "Presidente e Vice (etapa 5)", singular: "Presidência", fase: 5 },
+  { key: "presidencia", label: "Presidente e Vice (etapa 2)", singular: "Presidência", fase: 2 },
+  { key: "tesoureiro", label: "Tesoureiro (etapa 3)", singular: "Tesoureiro", fase: 3 },
+  { key: "secretario", label: "1º e 2º Secretário (etapa 4)", singular: "Secretário", fase: 4 },
+  { key: "exame", label: "Exame de Contas (etapa 5)", singular: "Exame de Contas", fase: 5 },
 ];
 const FASES = [
   { n: 1, label: "Pastores, Presbíteros e Diáconos", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
-  { n: 2, label: "Tesoureiro", como: "Candidatos = presbíteros eleitos na etapa 1. Cada membro escolhe 1 nome (ou vota em branco); o mais votado é o Tesoureiro." },
-  { n: 3, label: "1º e 2º Secretário", como: "Candidatos = presbíteros eleitos, menos o Tesoureiro. SIM, NÃO ou BRANCO; 1º lugar = 1º Secretário, 2º lugar = 2º Secretário." },
-  { n: 4, label: "Exame de Contas", como: "Você cadastra os nomes na hora (aba Candidatos). SIM, NÃO ou BRANCO; os mais votados ocupam as vagas." },
-  { n: 5, label: "Presidente e Vice-presidente", como: "Candidatos = pastores eleitos na etapa 1. SIM, NÃO ou BRANCO; 1º lugar = Presidente, 2º lugar = Vice-presidente, os demais continuam Pastor." },
+  { n: 2, label: "Presidente e Vice-presidente", como: "Candidatos = pastores eleitos na etapa 1. SIM, NÃO ou BRANCO; 1º lugar = Presidente, 2º lugar = Vice-presidente, os demais continuam Pastor." },
+  { n: 3, label: "Tesoureiro", como: "Candidatos = presbíteros eleitos na etapa 1. Cada membro escolhe 1 nome (ou vota em branco); o mais votado é o Tesoureiro." },
+  { n: 4, label: "1º e 2º Secretário", como: "Candidatos = presbíteros eleitos, menos o Tesoureiro. SIM, NÃO ou BRANCO; 1º lugar = 1º Secretário, 2º lugar = 2º Secretário." },
+  { n: 5, label: "Exame de Contas", como: "Você cadastra os nomes na hora (aba Candidatos). SIM, NÃO ou BRANCO; os mais votados ocupam as vagas." },
 ];
 
 // ---------- Login ----------
@@ -415,7 +415,7 @@ function desenharConfig(msg = "") {
           <span class="pequeno texto-suave">Desligado (padrão): a % para ser eleito usa só SIM + NÃO. Ligado: o branco também entra
           na conta (e dificulta a eleição). O resultado sempre mostra SIM, NÃO e BRANCO com as suas %.</span></span>
       </label>
-      <label class="rotulo" for="g-vagas" style="margin-top:14px">Vagas no Exame de Contas (etapa 4)</label>
+      <label class="rotulo" for="g-vagas" style="margin-top:14px">Vagas no Exame de Contas (etapa 5)</label>
       <input id="g-vagas" type="number" min="1" max="20" class="campo" style="width:110px;text-align:center" value="${cfg.vagas_exame || 3}">
       <p class="pequeno texto-suave">Os mais votados (por número de SIM) ocupam essas vagas.</p>
     </section>
