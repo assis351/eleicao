@@ -564,9 +564,47 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
       <p class="pequeno texto-suave" style="margin-bottom:0">Os membros usam sempre o mesmo link. Quando abrir uma etapa nova, avise no grupo
         para que todos abram o site de novo.</p>
     </section>
+    <section class="card pad" style="margin-bottom:20px">
+      <div class="titulo-card">Telão, QR Code e Ata</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn btn-verde" href="telao.html" target="_blank" rel="noopener">Abrir telão</a>
+        <button class="btn btn-contorno" id="b-qrcode">QR Code do site</button>
+        <button class="btn btn-contorno" id="b-ata">Gerar ata da assembleia</button>
+      </div>
+      <p class="pequeno texto-suave" style="margin-bottom:0"><strong>Telão:</strong> abra neste computador e projete. Mostra os votos
+        chegando e o QR Code; o resultado só aparece quando você clicar em "Mostrar resultado" (ou apertar a tecla R).
+        <strong>Ata:</strong> gera o rascunho com os votos de todas as etapas, em Word ou PDF.</p>
+    </section>
     <div style="display:grid;gap:14px">${cartoes}</div>`;
 
   $$("[data-acao]", caixa).forEach((b) => b.addEventListener("click", () => acaoEtapa(b.dataset.acao, b)));
+  $("#b-qrcode").addEventListener("click", abrirQRCode);
+  $("#b-ata").addEventListener("click", abrirFormularioAta);
+}
+
+// QR Code grande para mostrar na tela, imprimir ou mandar no grupo
+function abrirQRCode() {
+  const url = enderecoDoSite();
+  const fundo = document.createElement("div");
+  fundo.className = "modal-fundo";
+  fundo.innerHTML = `<div class="modal qr-grande">
+    <div class="titulo-card" style="margin-bottom:0">Aponte a câmera do celular para votar</div>
+    <div class="qr-caixa">${svgQR(url)}</div>
+    <p class="mono pequeno" style="word-break:break-all;margin:0">${esc(url)}</p>
+    <div class="linha-botoes" style="flex-wrap:wrap">
+      <button class="btn btn-contorno flex1" id="qr-fechar">Fechar</button>
+      <button class="btn btn-verde flex1" id="qr-baixar">Baixar imagem</button>
+      <button class="btn btn-contorno flex1" id="qr-copiar">Copiar link</button>
+    </div></div>`;
+  document.body.appendChild(fundo);
+  const fechar = () => fundo.remove();
+  fundo.addEventListener("click", (e) => { if (e.target === fundo) fechar(); });
+  $("#qr-fechar", fundo).addEventListener("click", fechar);
+  $("#qr-baixar", fundo).addEventListener("click", () => baixarQR(url));
+  $("#qr-copiar", fundo).addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(url); e.target.textContent = "Link copiado ✓"; }
+    catch { prompt("Copie o link:", url); }
+  });
 }
 
 async function acaoEtapa(acao, botao) {
