@@ -1,16 +1,20 @@
 // ================================================================
 // FLUXO DE VOTAÇÃO
-// Etapas: 0 identificação -> 1 Pastores -> 2 Presbíteros -> 3 Diáconos
-//         -> 4 revisão -> 5 comprovante
-// Em cada candidato o membro marca SIM ou NÃO (uma resposta por nome).
+// A cédula muda conforme a ETAPA atual (o admin controla no painel):
+// Em toda cédula há a opção BRANCO (contada, mas fora da porcentagem).
+//   Etapa 1: Pastores -> Presbíteros -> Diáconos  (SIM, NÃO ou BRANCO em cada nome)
+//   Etapa 2: Tesoureiro                           (escolhe 1 nome)
+//   Etapa 3: 1º e 2º Secretário                   (SIM ou NÃO em cada nome)
+//   Etapa 4: Exame de Contas                      (SIM ou NÃO em cada nome)
+// Telas: 0 identificação (opcional) -> uma tela por categoria -> revisão -> comprovante
 // ================================================================
 const estado = {
   info: null,          // dados vindos do servidor (candidatos, configurações)
-  etapa: 0,
+  etapa: 0,            // 0 = identificação; 1..N = categorias; N+1 = revisão; N+2 = comprovante
   nome: "",
   doc: "",
   primeiroNome: "",
-  respostas: {},       // { idDoCandidato: true (SIM) | false (NÃO) }
+  respostas: {},       // { idDoCandidato: true (SIM / escolhido) | false (NÃO / não escolhido) | "branco" }
   erro: "",
   jaVotou: false,
   enviando: false,
@@ -18,6 +22,9 @@ const estado = {
 };
 
 const app = document.getElementById("app");
+const N = () => estado.info.categories.length;      // quantas telas de cédula
+const REVISAO = () => N() + 1;
+const COMPROVANTE = () => N() + 2;
 
 // ---------- carregamento ----------
 (async function iniciar() {
@@ -26,16 +33,21 @@ const app = document.getElementById("app");
   estado.info = dados;
   $("#selo").innerHTML = seloLogo(dados.logo_url, 42);
   $("#igreja").textContent = dados.church_name;
-  $("#titulo").textContent = dados.title;
-  // Sem identificação: vai direto para a cédula (e bloqueia 2º voto neste aparelho)
+  $("#titulo").textContent = dados.fase > 1 ? `${dados.title} · ${dados.fase_label}` : dados.title;
+  // Sem identificação: vai direto para a cédula (e bloqueia 2º voto neste aparelho, por etapa)
   if (!dados.require_id) {
-    if (jaVotouNesteAparelho()) return aviso("Você já votou", "Este aparelho já registrou um voto nesta eleição. Obrigado!");
+    if (dados.status === "open" && jaVotouNesteAparelho())
+      return aviso("Você já votou", `Este aparelho já registrou um voto nesta etapa (${dados.fase_label}). Obrigado!`);
     estado.etapa = 1;
   }
   desenhar();
 })();
 
-function chaveAparelho() { return "votou_" + estado.info.title; }
+// cada etapa tem a sua "marca" de já votou (a 1ª mantém a chave antiga)
+function chaveAparelho() {
+  const base = "votou_" + estado.info.title;
+  return estado.info.fase > 1 ? `${base}_etapa${estado.info.fase}` : base;
+}
 function jaVotouNesteAparelho() {
   try { return !!localStorage.getItem(chaveAparelho()); } catch { return false; }
 }
@@ -57,13 +69,16 @@ function irPara(etapa) {
 // ---------- desenha a etapa atual ----------
 function desenhar() {
   const { info, etapa } = estado;
-  if (etapa < 5 && info.status === "not_started") return aviso("Votação ainda não começou", `Início: ${dataHora(info.start_at)}`);
-  if (etapa < 5 && info.status === "closed") return aviso("Votação encerrada", "O período de votação terminou.");
-
+  if (etapa < COMPROVANTE()) {
+    if (info.status === "not_started") return aviso("Votação ainda não começou", `Início: ${dataHora(info.start_at)}`);
+    if (info.status === "closed") return aviso("Votação encerrada", "O período de votação terminou.");
+    if (info.status === "paused") return aviso("Aguarde a próxima etapa",
+      "A votação desta etapa está encerrada. Assim que a próxima votação for aberta, toque em \"Voltar ao início\" ou recarregue esta página.");
+  }
   if (etapa === 0) return telaIdentificacao();
-  if (etapa >= 1 && etapa <= 3) return telaCedula(info.categories[etapa - 1]);
-  if (etapa === 4) return telaRevisao();
-  if (etapa === 5) return telaComprovante();
+  if (etapa >= 1 && etapa <= N()) return telaCedula(info.categories[etapa - 1]);
+  if (etapa === REVISAO()) return telaRevisao();
+  if (etapa === COMPROVANTE()) return telaComprovante();
 }
 
 function aviso(titulo, texto) {
@@ -81,7 +96,7 @@ function progresso() {
       const cls = num < estado.etapa ? "feito" : num === estado.etapa ? "feito atual" : "";
       return `<li class="${cls}"><div class="barra"></div><div class="nome">${n}</div></li>`;
     }).join("")}
-    <span class="sr">Etapa ${estado.etapa} de 4</span></ol>`;
+    <span class="sr">Passo ${estado.etapa} de ${nomes.length}</span></ol>`;
 }
 
 // ---------- 0: identificação ----------
@@ -125,43 +140,65 @@ function telaIdentificacao() {
   });
 }
 
-// ---------- 1, 2, 3: cédula SIM / NÃO ----------
+// ---------- cédula de uma categoria ----------
 function telaCedula(cat) {
   const lista = candidatosDa(cat.key);
-  const feitos = lista.filter((c) => typeof estado.respostas[c.id] === "boolean").length;
-  const completo = feitos === lista.length;
+  const escolha = cat.tipo === "escolha";
+  const emBranco = escolha && lista.length > 0 && lista.every((c) => estado.respostas[c.id] === "branco");
+  const feitos = escolha
+    ? (emBranco || lista.some((c) => estado.respostas[c.id] === true) ? lista.length : 0)
+    : lista.filter((c) => estado.respostas[c.id] !== undefined).length;
+  const completo = lista.length > 0 && feitos === lista.length;
   const faltam = lista.length - feitos;
 
   app.innerHTML = `
     ${progresso()}
     ${estado.etapa === 1 && estado.primeiroNome ? `<p class="texto-suave pequeno">Olá, <strong>${esc(estado.primeiroNome)}</strong>!</p>` : ""}
     <h2 class="titulo-etapa">${cat.label}</h2>
-    <p class="texto-suave">Para cada nome, marque <strong style="color:var(--verde-700)">SIM</strong>
-      ou <strong style="color:var(--vermelho-700)">NÃO</strong>.</p>
+    <p class="texto-suave">${escolha
+      ? `Toque no nome de <strong>um</strong> candidato para escolher o seu voto, ou vote em branco.`
+      : `Para cada nome, marque <strong style="color:var(--verde-700)">SIM</strong>,
+         <strong style="color:var(--vermelho-700)">NÃO</strong> ou <strong style="color:#4b5563">BRANCO</strong>.`}</p>
 
     <div class="contador" aria-live="polite">
-      <span class="${completo ? "completo" : ""}">${feitos} de ${lista.length} respondido${lista.length === 1 ? "" : "s"}</span>
+      <span class="${completo ? "completo" : ""}">${escolha
+        ? (emBranco ? "Voto em branco" : completo ? "1 nome escolhido" : "Nenhum nome escolhido")
+        : `${feitos} de ${lista.length} respondido${lista.length === 1 ? "" : "s"}`}</span>
     </div>
 
     ${lista.length === 0
       ? `<p class="card pad texto-suave" style="text-align:center">Nenhum candidato nesta categoria.</p>`
-      : `<ul class="lista-candidatos">${lista.map(cartaoCandidato).join("")}</ul>`}
+      : `<ul class="lista-candidatos">${lista.map((c) => (escolha ? cartaoEscolha(c) : cartaoCandidato(c))).join("")}
+         ${escolha ? cartaoBrancoEscolha(emBranco) : ""}</ul>`}
 
-    ${!completo ? `<p class="pequeno texto-suave mt">Responda todos os nomes para continuar. Ainda falta${faltam === 1 ? "" : "m"} ${faltam}.</p>` : ""}
+    ${!completo && lista.length ? `<p class="pequeno texto-suave mt">${escolha
+      ? "Escolha um nome (ou vote em branco) para continuar."
+      : `Responda todos os nomes para continuar. Ainda falta${faltam === 1 ? "" : "m"} ${faltam}.`}</p>` : ""}
 
     <div class="linha-botoes">
       <button class="btn btn-contorno flex1" id="voltar">Voltar</button>
       <button class="btn btn-verde flex2" id="avancar" ${completo ? "" : "disabled"}>
-        ${estado.etapa === 3 ? "Revisar Voto" : "Próximo"}</button>
+        ${estado.etapa === N() ? "Revisar Voto" : "Próximo"}</button>
     </div>`;
 
-  // cliques nos botões SIM / NÃO
-  $$(".botao-voto", app).forEach((b) =>
+  const redesenhar = () => { const y = window.scrollY; telaCedula(cat); window.scrollTo(0, y); };
+  // SIM / NÃO / BRANCO
+  $$(".botao-voto[data-valor]", app).forEach((b) =>
     b.addEventListener("click", () => {
-      estado.respostas[b.dataset.id] = b.dataset.valor === "sim";
-      const y = window.scrollY;
-      telaCedula(cat);           // redesenha mantendo a posição da tela
-      window.scrollTo(0, y);
+      const v = b.dataset.valor;
+      estado.respostas[b.dataset.id] = v === "sim" ? true : v === "nao" ? false : "branco";
+      redesenhar();
+    })
+  );
+  // em branco no "escolher 1 nome": marca todos da categoria como "branco"
+  $$(".botao-branco-escolha", app).forEach((b) =>
+    b.addEventListener("click", () => { lista.forEach((c) => { estado.respostas[c.id] = "branco"; }); redesenhar(); })
+  );
+  // escolher 1 nome: marca este e desmarca os outros da mesma categoria
+  $$(".botao-escolha", app).forEach((b) =>
+    b.addEventListener("click", () => {
+      lista.forEach((c) => { estado.respostas[c.id] = String(c.id) === b.dataset.id; });
+      redesenhar();
     })
   );
   $("#voltar").addEventListener("click", () => {
@@ -171,37 +208,72 @@ function telaCedula(cat) {
   $("#avancar").addEventListener("click", () => irPara(estado.etapa + 1));
 }
 
-function cartaoCandidato(c) {
-  const r = estado.respostas[c.id];
-  const marca = r === true ? "marcado-sim" : r === false ? "marcado-nao" : "";
-  return `<li class="card candidato ${marca}">
-    <div class="dados">
+function dadosCandidato(c) {
+  return `<div class="dados">
       ${avatar(c.photo_url, c.name, 64)}
       <div style="min-width:0">
         <div class="nome">${esc(c.name)}</div>
         ${c.description ? `<div class="desc">${esc(c.description)}</div>` : ""}
       </div>
-    </div>
-    <div class="botoes-voto" role="group" aria-label="Voto para ${esc(c.name)}">
+    </div>`;
+}
+
+function cartaoCandidato(c) {
+  const r = estado.respostas[c.id];
+  const marca = r === true ? "marcado-sim" : r === false ? "marcado-nao" : r === "branco" ? "marcado-branco" : "";
+  return `<li class="card candidato ${marca}">
+    ${dadosCandidato(c)}
+    <div class="botoes-voto tres" role="group" aria-label="Voto para ${esc(c.name)}">
       <button type="button" class="botao-voto sim ${r === true ? "ativo" : ""}" data-id="${c.id}" data-valor="sim" aria-pressed="${r === true}">
         ${r === true ? "✓ " : ""}SIM</button>
       <button type="button" class="botao-voto nao ${r === false ? "ativo" : ""}" data-id="${c.id}" data-valor="nao" aria-pressed="${r === false}">
         ${r === false ? "✓ " : ""}NÃO</button>
+      <button type="button" class="botao-voto branco ${r === "branco" ? "ativo" : ""}" data-id="${c.id}" data-valor="branco" aria-pressed="${r === "branco"}">
+        ${r === "branco" ? "✓ " : ""}BRANCO</button>
     </div>
   </li>`;
 }
 
-// ---------- 4: revisão ----------
+function cartaoEscolha(c) {
+  const marcado = estado.respostas[c.id] === true;
+  return `<li class="card candidato ${marcado ? "marcado-sim" : ""}">
+    ${dadosCandidato(c)}
+    <div class="botoes-voto" style="grid-template-columns:1fr">
+      <button type="button" class="botao-voto sim botao-escolha ${marcado ? "ativo" : ""}" data-id="${c.id}"
+        role="radio" aria-checked="${marcado}">${marcado ? "✓ Escolhido" : "Escolher"}</button>
+    </div>
+  </li>`;
+}
+
+function cartaoBrancoEscolha(ativo) {
+  return `<li class="card candidato ${ativo ? "marcado-branco" : ""}">
+    <div class="dados"><div style="min-width:0"><div class="nome">Voto em branco</div>
+      <div class="desc">Não escolher nenhum nome</div></div></div>
+    <div class="botoes-voto" style="grid-template-columns:1fr">
+      <button type="button" class="botao-voto branco botao-branco-escolha ${ativo ? "ativo" : ""}" role="radio" aria-checked="${ativo}">
+        ${ativo ? "✓ Em branco" : "Votar em branco"}</button>
+    </div>
+  </li>`;
+}
+
+const etiquetaResposta = (v) => v === true ? '<span class="etiqueta sim">SIM</span>'
+  : v === false ? '<span class="etiqueta nao">NÃO</span>' : '<span class="etiqueta branco">BRANCO</span>';
+
+// ---------- revisão ----------
 function telaRevisao() {
   const blocos = estado.info.categories.map((cat, i) => {
     const lista = candidatosDa(cat.key);
+    const branco = cat.tipo === "escolha" && lista.every((c) => estado.respostas[c.id] === "branco");
+    const itens = cat.tipo === "escolha"
+      ? (branco ? ['<li><span class="nome">Voto em branco</span><span class="etiqueta branco">BRANCO</span></li>']
+        : lista.filter((c) => estado.respostas[c.id] === true).map((c) =>
+          `<li>${avatar(c.photo_url, c.name, 40)}<span class="nome">${esc(c.name)}</span><span class="etiqueta sim">SEU VOTO</span></li>`))
+      : lista.map((c) => `<li>${avatar(c.photo_url, c.name, 40)}<span class="nome">${esc(c.name)}</span>
+          ${etiquetaResposta(estado.respostas[c.id])}</li>`);
     return `<div class="card pad revisao-bloco">
       <div class="cabeca"><h3>${cat.label}</h3>
         <button class="link-btn laranja" data-ir="${i + 1}">Alterar</button></div>
-      ${lista.length === 0 ? `<p class="texto-suave">Nenhum candidato</p>` : `<ul class="revisao-lista">
-        ${lista.map((c) => `<li>${avatar(c.photo_url, c.name, 40)}<span class="nome">${esc(c.name)}</span>
-          ${estado.respostas[c.id] ? '<span class="etiqueta sim">SIM</span>' : '<span class="etiqueta nao">NÃO</span>'}</li>`).join("")}
-      </ul>`}
+      ${lista.length === 0 ? `<p class="texto-suave">Nenhum candidato</p>` : `<ul class="revisao-lista">${itens.join("")}</ul>`}
     </div>`;
   }).join("");
 
@@ -226,7 +298,10 @@ async function confirmar() {
   estado.enviando = true; estado.erro = "";
   desenhar();
   const answers = {};
-  for (const c of estado.info.candidates) answers[c.id] = estado.respostas[c.id];
+  for (const c of estado.info.candidates) {
+    const v = estado.respostas[c.id];
+    answers[c.id] = v === true || v === "branco" ? v : false;
+  }
   // se muita gente votar no mesmo segundo, o Google pede para esperar: tenta de novo sozinho
   let resp;
   for (let tentativa = 1; tentativa <= 4; tentativa++) {
@@ -243,10 +318,10 @@ async function confirmar() {
   }
   estado.comprovante = { protocolo: dados.protocol, em: dados.at };
   marcarAparelho();
-  irPara(5);
+  irPara(COMPROVANTE());
 }
 
-// ---------- 5: comprovante ----------
+// ---------- comprovante ----------
 function telaComprovante() {
   const c = estado.comprovante;
   app.innerHTML = `
@@ -259,12 +334,16 @@ function telaComprovante() {
         <div class="rotulo-c">Comprovante de votação</div>
         <dl>
           <div><dt>Igreja</dt><dd>${esc(estado.info.church_name)}</dd></div>
+          <div><dt>Etapa</dt><dd>${esc(estado.info.fase_label)}</dd></div>
           ${estado.nome ? `<div><dt>Eleitor</dt><dd>${esc(estado.nome)}</dd></div>` : ""}
           <div><dt>Data e hora</dt><dd>${dataHora(c.em)}</dd></div>
           <div><dt>Protocolo</dt><dd class="mono">${esc(c.protocolo)}</dd></div>
         </dl>
         <p class="pequeno texto-suave" style="text-align:center">O comprovante não mostra como você votou. O voto é secreto.</p>
       </div>
+
+      ${estado.info.fase < 4 ? `<p class="texto-suave mt-g">Fique atento: haverá uma próxima etapa de votação.
+        Quando ela for aberta, use o mesmo link.</p>` : ""}
 
       <div class="nao-imprimir">
         <button class="btn btn-contorno mt-g" onclick="window.print()">Imprimir / salvar comprovante</button>
