@@ -37,7 +37,8 @@ const COMPROVANTE = () => N() + 2;
   // Sem identificação: vai direto para a cédula (e bloqueia 2º voto neste aparelho, por etapa)
   if (!dados.require_id) {
     if (dados.status === "open" && jaVotouNesteAparelho())
-      return aviso("Você já votou", `Este aparelho já registrou um voto nesta etapa (${dados.fase_label}). Obrigado!`);
+      return aviso("Você já votou", `Este aparelho já registrou um voto nesta etapa (${dados.fase_label}). Obrigado!`,
+        dados.fase < 4);
     estado.etapa = 1;
   }
   desenhar();
@@ -73,7 +74,7 @@ function desenhar() {
     if (info.status === "not_started") return aviso("Votação ainda não começou", `Início: ${dataHora(info.start_at)}`);
     if (info.status === "closed") return aviso("Votação encerrada", "O período de votação terminou.");
     if (info.status === "paused") return aviso("Aguarde a próxima etapa",
-      "A votação desta etapa está encerrada. Assim que a próxima votação for aberta, toque em \"Voltar ao início\" ou recarregue esta página.");
+      "A votação desta etapa está encerrada. Assim que a próxima for aberta, esta tela avisa você.", true);
   }
   if (etapa === 0) return telaIdentificacao();
   if (etapa >= 1 && etapa <= N()) return telaCedula(info.categories[etapa - 1]);
@@ -81,11 +82,14 @@ function desenhar() {
   if (etapa === COMPROVANTE()) return telaComprovante();
 }
 
-function aviso(titulo, texto) {
+// vigiar = true: a tela fica esperando e avisa quando a próxima votação abrir
+function aviso(titulo, texto, vigiar = false) {
   app.innerHTML = `<div class="card pad" style="text-align:center">
     <h2 class="titulo-etapa" style="font-size:30px">${esc(titulo)}</h2>
     <p class="texto-suave">${esc(texto)}</p>
+    ${vigiar ? '<div id="vigia" class="mt"></div>' : ""}
     <a class="btn btn-contorno mt" href="index.html">Voltar ao início</a></div>`;
+  if (vigiar) vigiarProximaEtapa($("#vigia"));
 }
 
 function progresso() {
@@ -342,12 +346,13 @@ function telaComprovante() {
         <p class="pequeno texto-suave" style="text-align:center">O comprovante não mostra como você votou. O voto é secreto.</p>
       </div>
 
-      ${estado.info.fase < 4 ? `<p class="texto-suave mt-g">Fique atento: haverá uma próxima etapa de votação.
-        Quando ela for aberta, use o mesmo link.</p>` : ""}
+      ${estado.info.fase < 4 ? `<p class="texto-suave mt-g">Fique atento: haverá uma próxima etapa de votação.</p>
+        <div id="vigia" class="nao-imprimir" style="max-width:420px;margin:0 auto"></div>` : ""}
 
       <div class="nao-imprimir">
         <button class="btn btn-contorno mt-g" onclick="window.print()">Imprimir / salvar comprovante</button>
         <p class="mt"><a href="index.html" class="pequeno">Voltar ao início</a></p>
       </div>
     </section>`;
+  if (estado.info.fase < 4) vigiarProximaEtapa($("#vigia"));
 }
