@@ -39,6 +39,7 @@
 
   <script src="js/config.js"></script>
   <script src="js/comum.js"></script>
+  <script src="js/aviso-etapa.js"></script>
   <script>
     (async function () {
       const { ok, dados } = await chamar("info");
@@ -60,9 +61,9 @@
       } else if (dados.status === "paused") {
         acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
           <strong>Aguarde a próxima etapa</strong>
-          <span class="pequeno">A votação desta etapa está encerrada. Quando a próxima for aberta,
-            recarregue esta página.</span></div>
-          <button class="btn btn-contorno mt" onclick="location.reload()">Recarregar</button>`;
+          <span class="pequeno">A votação desta etapa está encerrada.</span></div>
+          <div id="vigia" class="mt"></div>`;
+        vigiarProximaEtapa($("#vigia"));
       } else if (dados.status === "not_started") {
         acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
           <strong>Votação ainda não começou</strong>
