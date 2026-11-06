@@ -21,7 +21,7 @@
 
       <h1 id="titulo">Eleição de Liderança 2026</h1>
 
-      <p class="chamada">
+      <p class="chamada" id="chamada">
         Escolha em oração os irmãos que servirão como <strong>Pastores</strong>,
         <strong>Presbíteros</strong> e <strong>Diáconos</strong>. Seu voto é secreto.
       </p>
@@ -51,8 +51,18 @@
       $("#titulo").textContent = dados.title;
       if (dados.logo_url) $("#logo").src = dados.logo_url;
 
+      // texto conforme a etapa (1: Pastores/Presbíteros/Diáconos; 2: Tesoureiro; 3: Secretários; 4: Exame de Contas)
+      if (dados.fase > 1) {
+        $("#chamada").innerHTML = `Etapa ${dados.fase} de 4: escolha em oração para <strong>${esc(dados.fase_label)}</strong>. Seu voto é secreto.`;
+      }
       if (dados.status === "open") {
-        acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação</a>`;
+        acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação${dados.fase > 1 ? " · " + esc(dados.fase_label) : ""}</a>`;
+      } else if (dados.status === "paused") {
+        acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
+          <strong>Aguarde a próxima etapa</strong>
+          <span class="pequeno">A votação desta etapa está encerrada. Quando a próxima for aberta,
+            recarregue esta página.</span></div>
+          <button class="btn btn-contorno mt" onclick="location.reload()">Recarregar</button>`;
       } else if (dados.status === "not_started") {
         acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
           <strong>Votação ainda não começou</strong>
