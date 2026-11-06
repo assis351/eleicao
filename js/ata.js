@@ -207,11 +207,12 @@ async function montarAta(a) {
           cat.candidates.map((c) => [esc(c.name), c.yes, c.no, c.blank || 0, pctAta(c.percent), situacao(c)])));
       }
       const eleitos = cat.candidates.filter((c) => c.status === "eleito");
-      eleitos.forEach((c) => quadro.push([c.cargo || cat.singular, c.name]));
+      const continuam = cat.demais ? eleitos.filter((c) => c.cargo === cat.demais) : [];
+      eleitos.filter((c) => !continuam.includes(c)).forEach((c) => quadro.push([c.cargo || cat.singular, c.name]));
       const empate = cat.candidates.filter((c) => c.status === "empate").map((c) => c.name);
       // agrupa por cargo: "para Tesoureiro: Fulano, com 4 (quatro) votos" / "para Exame de Contas: A, com …; B, com …"
       const grupos = [];
-      eleitos.forEach((c) => {
+      eleitos.filter((c) => !continuam.includes(c)).forEach((c) => {
         const cargo = c.cargo || cat.singular;
         let g = grupos.find((x) => x.cargo === cargo);
         if (!g) grupos.push((g = { cargo, nomes: [] }));
@@ -219,7 +220,9 @@ async function montarAta(a) {
       });
       const juntar = (l) => l.length <= 1 ? l.join("") : l.slice(0, -1).join("; ") + "; e " + l[l.length - 1];
       const texto = grupos.map((g) => `para ${esc(g.cargo)}: ${juntar(g.nomes)}`);
-      partes.push(`<p>${texto.length ? `${eleitos.length > 1 ? "Foram eleitos" : "Foi eleito"} ${juntar(texto)}.` : ""}
+      const nEleitos = eleitos.length - continuam.length;
+      partes.push(`<p>${texto.length ? `${nEleitos > 1 ? "Foram eleitos" : "Foi eleito"} ${juntar(texto)}.` : ""}
+        ${continuam.length ? ` ${continuam.length > 1 ? "Os demais permanecem" : "Permanece"} como ${esc(cat.demais)}: ${esc(listaE(continuam.map((c) => c.name)))}.` : ""}
         ${empate.length ? ` Houve empate entre ${esc(listaE(empate))}, devendo a votação ser refeita.` : ""}</p>`);
     }
   });
