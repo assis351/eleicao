@@ -29,6 +29,7 @@ function iniciarResultados(container, opcoes = {}) {
   let ultimo = null;
   let assinatura = "";
   const graficos = {};
+  let brancosContam = false;
 
   async function buscar() {
     const { ok, dados } = await chamar("results");
@@ -43,7 +44,8 @@ function iniciarResultados(container, opcoes = {}) {
       return;
     }
     // só redesenha se algo mudou (evita a tela "piscar")
-    const nova = JSON.stringify(dados.categories) + dados.totalBallots + dados.totalVoters + dados.minPercent + dados.requireId;
+    const nova = JSON.stringify(dados.categories) + dados.totalBallots + dados.totalVoters + dados.minPercent + dados.requireId
+      + dados.fase + dados.faseAberta;
     ultimo = dados;
     if (nova === assinatura) {
       const hora = $(".hora-atualizacao", container);
@@ -55,9 +57,13 @@ function iniciarResultados(container, opcoes = {}) {
   }
 
   function desenhar(r) {
+    brancosContam = r.brancosContam;
     container.innerHTML = `
       <div class="resumo">
-        <div class="card numero destaque"><div class="r">Votos computados</div><div class="v">${r.totalBallots}</div></div>
+        <div class="card numero"><div class="r">Etapa atual</div>
+          <div class="v" style="font-size:22px;line-height:1.2;margin-top:6px">${r.fase}. ${esc(r.faseLabel)}</div>
+          <span class="etiqueta ${r.faseAberta ? "eleito" : "neutra"}" style="margin-top:6px">${r.faseAberta ? "Votação aberta" : "Votação encerrada"}</span></div>
+        <div class="card numero destaque"><div class="r">Votos nesta etapa</div><div class="v">${r.totalBallots}</div></div>
         ${r.requireId ? `
         <div class="card numero"><div class="r">Eleitores cadastrados</div><div class="v">${r.totalVoters}</div></div>
         <div class="card numero"><div class="r">Participação</div><div class="v">${porcentagem(r.participation)}</div></div>` : ""}
@@ -72,10 +78,13 @@ function iniciarResultados(container, opcoes = {}) {
         </span>
       </div>
 
-      <p class="pequeno texto-suave">Critério: é <strong>eleito</strong> quem tiver <strong>mais de ${r.minPercent}%</strong>
-        de votos SIM (sobre o total de SIM + NÃO daquele nome).</p>
+      <p class="pequeno texto-suave">Os percentuais de SIM, NÃO e BRANCO são sobre todos os votos daquele nome.
+        Etapa 1: é <strong>eleito</strong> quem tiver <strong>mais de ${r.minPercent}%</strong> de SIM
+        ${r.brancosContam ? "contando os votos em branco" : "sobre os votos válidos (SIM + NÃO; o branco não entra nessa conta)"}.
+        ${r.fase > 1 ? "Etapas 2 a 4: os cargos vão para os mais votados (1º lugar, 2º lugar…)." : ""}</p>
 
-      ${r.categories.map(blocoCategoria).join("")}`;
+      ${r.fase > 1 ? quadroCargos(r) : ""}
+      ${r.categories.slice().reverse().map(blocoCategoria).join("")}`;
 
     $$("[data-exportar]", container).forEach((b) =>
       b.addEventListener("click", async () => {
@@ -90,13 +99,36 @@ function iniciarResultados(container, opcoes = {}) {
     desenharGraficos(r);
   }
 
+  // resumo "quem ficou com cada cargo" (etapas 2 a 4)
+  function quadroCargos(r) {
+    const linhas = [];
+    r.categories.filter((c) => c.fase > 1).forEach((cat) => {
+      const ganhos = cat.candidates.filter((c) => c.status === "eleito");
+      const empate = cat.candidates.some((c) => c.status === "empate");
+      if (ganhos.length) ganhos.forEach((c) => linhas.push([c.cargo, c.name]));
+      else linhas.push([cat.label, empate ? "Empate — refazer a votação" : (cat.fase === r.fase && r.faseAberta ? "Votação em andamento" : "Aguardando votos")]);
+      if (empate && ganhos.length) linhas.push([cat.label, "Empate em uma das vagas"]);
+    });
+    return `<section class="card pad mt">
+      <div class="titulo-card" style="margin-bottom:8px">Cargos definidos até agora</div>
+      <table class="tabela"><tbody>${linhas.map(([cargo, nome]) =>
+        `<tr><td style="width:45%"><strong>${esc(cargo)}</strong></td><td>${esc(nome)}</td></tr>`).join("")}</tbody></table>
+    </section>`;
+  }
+
   function blocoCategoria(cat) {
     const eleitos = cat.candidates.filter((c) => c.status === "eleito").length;
+    const totalBrancos = cat.tipo === "escolha" ? cat.blanks || 0 : cat.candidates.reduce((s, c) => s + (c.blank || 0), 0);
+    const info = (cat.fase > 1 ? `${cat.ballots} voto(s)` : `${eleitos} eleito(s) de ${cat.candidates.length}`)
+      + ` · ${totalBrancos} em branco`;
     return `<section class="card categoria-res">
-      <header><h2>${cat.label}</h2><span>${eleitos} eleito(s) de ${cat.candidates.length}</span></header>
+      <header><h2><small style="font-size:13px;opacity:.75;display:block">Etapa ${cat.fase}</small>${cat.label}</h2><span>${info}</span></header>
       ${cat.candidates.length === 0 ? `<p style="padding:20px" class="texto-suave">Nenhum candidato cadastrado.</p>` : `
       <div class="categoria-corpo">
-        <ol class="ranking">${cat.candidates.map(itemRanking).join("")}</ol>
+        <div>
+          <ol class="ranking">${cat.candidates.map((c) => itemRanking(c, cat)).join("")}</ol>
+          ${cat.tipo === "escolha" ? linhaBrancoEscolha(cat) : ""}
+        </div>
         <div class="grafico" style="height:${Math.max(240, cat.candidates.length * 56 + 50)}px">
           <canvas id="grafico-${cat.key}" aria-label="Gráfico de ${cat.label}"></canvas>
         </div>
@@ -104,7 +136,24 @@ function iniciarResultados(container, opcoes = {}) {
     </section>`;
   }
 
-  function itemRanking(c) {
+  // no "escolher 1 nome" (tesoureiro) o branco é um total da categoria
+  function linhaBrancoEscolha(cat) {
+    const tv = cat.candidates.length ? cat.candidates[0].totalVotos : 0;
+    const pct = tv ? (cat.blanks / tv) * 100 : 0;
+    return `<div class="ranking" style="margin-top:10px"><div style="border-radius:12px;padding:10px;background:#f3f4f6">
+      <div class="nome-l" style="font-weight:700">Votos em branco <span class="etiqueta branco">BRANCO</span></div>
+      <div class="barra-sn"><div class="b" style="width:${pct}%"></div></div>
+      <div class="numeros-sn"><span class="b"><strong>${cat.blanks} voto${cat.blanks === 1 ? "" : "s"}</strong> (${porcentagem(pct)})</span></div>
+    </div></div>`;
+  }
+
+  function itemRanking(c, cat) {
+    const escolha = cat.tipo === "escolha";
+    const selos = cat.fase === 1
+      ? `${c.status === "eleito" ? '<span class="etiqueta eleito">Eleito</span>' : ""}
+         ${c.status === "nao_eleito" ? '<span class="etiqueta nao-eleito">Não eleito</span>' : ""}`
+      : `${c.status === "eleito" ? `<span class="etiqueta eleito">${esc(c.cargo)}</span>` : ""}
+         ${c.status === "empate" ? '<span class="etiqueta nao-eleito">Empate</span>' : ""}`;
     return `<li class="${c.status === "eleito" ? "eleito" : ""}">
       <div class="linha1">
         <span class="pos">${c.position}º</span>
@@ -112,17 +161,20 @@ function iniciarResultados(container, opcoes = {}) {
         <div class="info">
           <div class="nome-l">${esc(c.name)}
             ${c.position === 1 && c.yes > 0 ? '<span class="etiqueta primeiro">1º Lugar</span>' : ""}
-            ${c.status === "eleito" ? '<span class="etiqueta eleito">Eleito</span>' : ""}
-            ${c.status === "nao_eleito" ? '<span class="etiqueta nao-eleito">Não eleito</span>' : ""}
+            ${selos}
             ${c.status === null ? '<span class="etiqueta neutra">Sem votos</span>' : ""}
           </div>
-          <div class="barra-sn" role="img" aria-label="${c.yes} SIM e ${c.no} NÃO">
-            <div class="s" style="width:${c.percent}%"></div><div class="n" style="width:${c.noPercent}%"></div>
+          <div class="barra-sn" role="img" aria-label="${escolha ? `${c.yes} votos` : `${c.yes} SIM, ${c.no} NÃO e ${c.blank} BRANCO`}">
+            <div class="s" style="width:${c.pctSim}%"></div><div class="n" style="width:${c.pctNao}%"></div><div class="b" style="width:${escolha ? 0 : c.pctBranco}%"></div>
           </div>
-          <div class="numeros-sn">
-            <span class="s"><strong>SIM ${c.yes}</strong> (${porcentagem(c.percent)})</span>
-            <span class="n"><strong>NÃO ${c.no}</strong> (${porcentagem(c.noPercent)})</span>
+          <div class="numeros-sn">${escolha
+            ? `<span class="s"><strong>${c.yes} voto${c.yes === 1 ? "" : "s"}</strong> (${porcentagem(c.pctSim)})</span>`
+            : `<span class="s"><strong>SIM ${c.yes}</strong> (${porcentagem(c.pctSim)})</span>
+               <span class="n"><strong>NÃO ${c.no}</strong> (${porcentagem(c.pctNao)})</span>
+               <span class="b"><strong>BRANCO ${c.blank}</strong> (${porcentagem(c.pctBranco)})</span>`}
           </div>
+          ${(escolha ? cat.blanks : c.blank) && !brancosContam && c.total
+            ? `<div class="pequeno texto-suave" style="margin-top:2px">${escolha ? "Sobre os votos válidos" : "SIM sobre os votos válidos"}: ${porcentagem(c.percent)}</div>` : ""}
         </div>
       </div>
     </li>`;
@@ -138,10 +190,13 @@ function iniciarResultados(container, opcoes = {}) {
         type: "bar",
         data: {
           labels: cat.candidates.map((c) => c.name),
-          datasets: [
-            { label: "SIM", data: cat.candidates.map((c) => c.yes), backgroundColor: "#556b18", borderRadius: 4 },
-            { label: "NÃO", data: cat.candidates.map((c) => c.no), backgroundColor: "#dc2626", borderRadius: 4 },
-          ],
+          datasets: cat.tipo === "escolha"
+            ? [{ label: "Votos", data: cat.candidates.map((c) => c.yes), backgroundColor: "#556b18", borderRadius: 4 }]
+            : [
+                { label: "SIM", data: cat.candidates.map((c) => c.yes), backgroundColor: "#556b18", borderRadius: 4 },
+                { label: "NÃO", data: cat.candidates.map((c) => c.no), backgroundColor: "#dc2626", borderRadius: 4 },
+                { label: "BRANCO", data: cat.candidates.map((c) => c.blank || 0), backgroundColor: "#9ca3af", borderRadius: 4 },
+              ],
         },
         options: {
           indexAxis: "y",
@@ -162,7 +217,8 @@ function iniciarResultados(container, opcoes = {}) {
 }
 
 // ---------- Exportação ----------
-const selo = (s) => (s === "eleito" ? "Eleito" : s === "nao_eleito" ? "Não eleito" : "Sem votos");
+const selo = (s) => (s === "eleito" ? "Eleito" : s === "nao_eleito" ? "Não eleito" : s === "empate" ? "Empate" : "Sem votos");
+const situacaoTexto = (c, cat) => (cat.fase > 1 && c.status === "eleito" ? c.cargo : cat.fase > 1 && c.status === "nao_eleito" ? "—" : selo(c.status));
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 async function exportarPDF(r) {
@@ -178,17 +234,22 @@ async function exportarPDF(r) {
   doc.setFillColor(...laranja); doc.rect(0, 32, 210, 1.5, "F");
 
   doc.setTextColor(...verde); doc.setFontSize(10);
-  doc.text(`Gerado em ${dataHora(r.updatedAt)}  |  Votos computados: ${r.totalBallots} de ${r.totalVoters} eleitores (${porcentagem(r.participation)})`, 14, 42);
-  doc.text(`Critério: eleito com mais de ${r.minPercent}% de votos SIM.`, 14, 48);
+  doc.text(`Gerado em ${dataHora(r.updatedAt)}  |  Votos por etapa: ${(r.fases || []).filter((f) => f.n <= r.fase).map((f) => `${f.label}: ${f.ballots}`).join(" | ")}`, 14, 42);
+  doc.text(`Critério: eleito com mais de ${r.minPercent}% de SIM ${r.brancosContam ? "(brancos contam)" : "(sobre SIM + NÃO; brancos não contam)"}. % da tabela = sobre todos os votos.`, 14, 48);
 
   let y = 58;
   for (const cat of r.categories) {
     if (y > 250) { doc.addPage(); y = 20; }
-    doc.setFontSize(13); doc.setTextColor(...verde); doc.text(cat.label, 14, y);
+    const escolha = cat.tipo === "escolha";
+    doc.setFontSize(13); doc.setTextColor(...verde); doc.text(`Etapa ${cat.fase} - ${cat.label}`, 14, y);
     doc.autoTable({
       startY: y + 3,
-      head: [["Pos.", "Candidato", "SIM", "NÃO", "% SIM", "Situação"]],
-      body: cat.candidates.map((c) => [`${c.position}º`, c.name, c.yes, c.no, porcentagem(c.percent), selo(c.status)]),
+      head: [escolha ? ["Pos.", "Candidato", "Votos", "% votos", "Cargo"]
+        : ["Pos.", "Candidato", "SIM", "%", "NÃO", "%", "BRANCO", "%", cat.fase > 1 ? "Cargo" : "Situação"]],
+      body: [...cat.candidates.map((c) => escolha
+        ? [`${c.position}º`, c.name, c.yes, porcentagem(c.pctSim), situacaoTexto(c, cat)]
+        : [`${c.position}º`, c.name, c.yes, porcentagem(c.pctSim), c.no, porcentagem(c.pctNao), c.blank, porcentagem(c.pctBranco), situacaoTexto(c, cat)]),
+        ...(escolha ? [["", "Votos em branco", cat.blanks, porcentagem(cat.candidates.length && cat.candidates[0].totalVotos ? cat.blanks / cat.candidates[0].totalVotos * 100 : 0), ""]] : [])],
       headStyles: { fillColor: verde, textColor: 255 },
       alternateRowStyles: { fillColor: [246, 247, 240] },
       styles: { fontSize: 10 },
@@ -206,18 +267,20 @@ async function exportarExcel(r) {
     ["Igreja", r.settings.church_name],
     ["Eleição", r.settings.title],
     ["Gerado em", dataHora(r.updatedAt)],
-    ["Eleitores cadastrados", r.totalVoters],
-    ["Votos computados", r.totalBallots],
-    ["Participação", porcentagem(r.participation)],
+    ["Etapa atual", `${r.fase} - ${r.faseLabel}`],
+    ...(r.fases || []).filter((f) => f.n <= r.fase).map((f) => [`Votos - ${f.label}`, f.ballots]),
     ["Critério", `Eleito com mais de ${r.minPercent}% de SIM`],
   ]), "Resumo");
   for (const cat of r.categories) {
-    const linhas = cat.candidates.map((c) => ({
-      "Posição": c.position, "Candidato": c.name, "SIM": c.yes, "NÃO": c.no,
-      "% SIM": Number(c.percent.toFixed(2)), "Situação": selo(c.status),
-    }));
+    const n2 = (x) => Number((x || 0).toFixed(2));
+    const linhas = cat.candidates.map((c) => (cat.tipo === "escolha"
+      ? { "Posição": c.position, "Candidato": c.name, "Votos": c.yes, "% votos": n2(c.pctSim), "Cargo": situacaoTexto(c, cat) }
+      : { "Posição": c.position, "Candidato": c.name, "SIM": c.yes, "% SIM": n2(c.pctSim), "NÃO": c.no, "% NÃO": n2(c.pctNao),
+          "BRANCO": c.blank, "% BRANCO": n2(c.pctBranco), "% SIM p/ decidir": n2(c.percent),
+          [cat.fase > 1 ? "Cargo" : "Situação"]: situacaoTexto(c, cat) }));
+    if (cat.tipo === "escolha") linhas.push({ "Posição": "", "Candidato": "Votos em branco", "Votos": cat.blanks || 0 });
     const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ Candidato: "Sem candidatos" }]);
-    ws["!cols"] = [{ wch: 8 }, { wch: 34 }, { wch: 7 }, { wch: 7 }, { wch: 8 }, { wch: 12 }];
+    ws["!cols"] = [{ wch: 8 }, { wch: 34 }, { wch: 7 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }, { wch: 14 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, ws, cat.label);
   }
   XLSX.writeFile(wb, `resultado-eleicao-${hoje()}.xlsx`);
