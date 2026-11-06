@@ -38,7 +38,7 @@ const COMPROVANTE = () => N() + 2;
   if (!dados.require_id) {
     if (dados.status === "open" && jaVotouNesteAparelho())
       return aviso("Você já votou", `Este aparelho já registrou um voto nesta etapa (${dados.fase_label}). Obrigado!`,
-        dados.fase < 4);
+        dados.fase < (dados.fases || []).length);
     estado.etapa = 1;
   }
   desenhar();
@@ -346,7 +346,7 @@ function telaComprovante() {
         <p class="pequeno texto-suave" style="text-align:center">O comprovante não mostra como você votou. O voto é secreto.</p>
       </div>
 
-      ${estado.info.fase < 4 ? `<p class="texto-suave mt-g">Fique atento: haverá uma próxima etapa de votação.</p>
+      ${estado.info.fase < (estado.info.fases || []).length ? `<p class="texto-suave mt-g">Fique atento: haverá uma próxima etapa de votação.</p>
         <div id="vigia" class="nao-imprimir" style="max-width:420px;margin:0 auto"></div>` : ""}
 
       <div class="nao-imprimir">
@@ -354,5 +354,5 @@ function telaComprovante() {
         <p class="mt"><a href="index.html" class="pequeno">Voltar ao início</a></p>
       </div>
     </section>`;
-  if (estado.info.fase < 4) vigiarProximaEtapa($("#vigia"));
+  if (estado.info.fase < (estado.info.fases || []).length) vigiarProximaEtapa($("#vigia"));
 }
