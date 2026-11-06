@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141f0c">
+  <meta name="robots" content="noindex">
+  <title>Telão · Eleição de Liderança</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Tela para projetar. Tamanhos em vw/vh para caber em qualquer projetor. */
+    html, body { height: 100%; }
+    body.telao { margin: 0; background: radial-gradient(ellipse at 20% 0%, #2b4220 0%, #141f0c 60%) fixed;
+      color: #fff; overflow: hidden; min-height: 100vh; }
+    body.telao.sem-cursor { cursor: none; }
+    .t-topo { display: flex; align-items: center; gap: 1.4vw; padding: 2.2vh 3vw; }
+    .t-topo .selo-logo { width: 6vh; height: 6vh; }
+    .t-igreja { font-size: max(12px, 1.5vh); letter-spacing: .14em; text-transform: uppercase; color: var(--laranja-300); font-weight: 700; }
+    .t-titulo { font-size: max(18px, 3vh); font-weight: 800; line-height: 1.1; }
+    .t-etapa { margin-left: auto; text-align: right; }
+    .t-etapa .n { font-size: max(12px, 1.6vh); letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.65); font-weight: 700; }
+    .t-etapa .l { font-size: max(16px, 2.8vh); font-weight: 800; color: var(--laranja-300); }
+    .t-faixa { height: .6vh; background: linear-gradient(90deg, var(--verde-600), var(--laranja-500)); }
+    .t-palco { position: absolute; inset: 12vh 0 0 0; padding: 3vh 4vw 6vh; display: flex; }
+    .t-palco > * { animation: entra .6s ease-out both; }
+    @keyframes entra { from { opacity: 0; transform: translateY(2vh); } to { opacity: 1; transform: none; } }
+
+    /* ---- contador (votação aberta / encerrada) ---- */
+    .t-contador { flex: 1; display: grid; grid-template-columns: 1.15fr 1fr; gap: 5vw; align-items: center; }
+    .t-contador.sem-qr { grid-template-columns: 1fr; text-align: center; }
+    .t-estado { display: inline-flex; align-items: center; gap: 1vw; font-size: max(16px, 3vh); font-weight: 800;
+      border-radius: 99px; padding: 1vh 2.2vw; background: rgba(111,144,27,.25); color: #d9f99d; }
+    .t-estado i { width: 1.6vh; height: 1.6vh; border-radius: 50%; background: #a3e635; animation: pulsa 1.4s infinite; }
+    .t-estado.fechada { background: rgba(232,121,42,.2); color: var(--laranja-300); }
+    .t-estado.fechada i { background: var(--laranja-500); animation: none; }
+    @keyframes pulsa { 0% { box-shadow: 0 0 0 0 rgba(163,230,53,.7); } 100% { box-shadow: 0 0 0 2vh rgba(163,230,53,0); } }
+    .t-numero { font-size: min(30vh, 22vw); font-weight: 900; line-height: .9; letter-spacing: -.03em; margin-top: 3vh;
+      font-variant-numeric: tabular-nums; }
+    .t-numero.pulo { animation: pulo .5s ease-out; }
+    @keyframes pulo { 40% { transform: scale(1.08); color: var(--laranja-300); } }
+    .t-legenda { font-size: max(18px, 4vh); font-weight: 700; color: rgba(255,255,255,.8); }
+    .t-sub { font-size: max(14px, 2.4vh); color: rgba(255,255,255,.6); margin-top: 2vh; }
+    .t-qr { background: #fff; color: var(--verde-900); border-radius: 3vh; padding: 3vh; text-align: center;
+      box-shadow: 0 3vh 8vh rgba(0,0,0,.35); justify-self: center; width: min(62vh, 40vw); }
+    .t-qr .qr { width: 100%; aspect-ratio: 1; }
+    .t-qr .qr svg { width: 100%; height: 100%; display: block; }
+    .t-qr strong { display: block; font-size: max(16px, 3.4vh); font-weight: 800; margin-top: 1vh; }
+    .t-qr span { font-size: max(12px, 2.1vh); color: var(--cinza); word-break: break-all; }
+
+    /* ---- resultado ---- */
+    .t-res { flex: 1; display: grid; gap: 2.4vw; align-content: start; overflow: hidden; }
+    .t-col { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 2.4vh; padding: 2.4vh 1.6vw; }
+    .t-col h3 { font-size: max(16px, 3.2vh); font-weight: 800; color: var(--laranja-300); margin-bottom: 1.6vh; display: flex; justify-content: space-between; align-items: baseline; gap: 1vw; }
+    .t-col h3 small { font-size: max(11px, 1.7vh); color: rgba(255,255,255,.6); font-weight: 600; }
+    .t-linha { display: grid; grid-template-columns: 1fr auto; gap: .6vh 1vw; align-items: center; padding: 1.1vh 0;
+      border-top: 1px solid rgba(255,255,255,.08); opacity: 0; animation: entra .5s ease-out forwards; }
+    .t-linha:first-of-type { border-top: 0; }
+    .t-linha .nome { font-size: max(14px, 2.6vh); font-weight: 700; line-height: 1.15; display: flex; flex-wrap: wrap; align-items: center; gap: .5vh .8vw; }
+    .t-linha .pct { font-size: max(14px, 2.8vh); font-weight: 900; font-variant-numeric: tabular-nums; }
+    .t-barra { grid-column: 1 / -1; height: 1.2vh; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .t-barra b { display: block; height: 100%; width: 0; border-radius: 99px; background: rgba(255,255,255,.4);
+      transition: width 1.4s cubic-bezier(.2,.8,.2,1); }
+    .t-linha.eleito .t-barra b { background: linear-gradient(90deg, var(--verde-600), #a3e635); }
+    .t-linha .det { grid-column: 1 / -1; font-size: max(11px, 1.7vh); color: rgba(255,255,255,.6); display: flex; gap: 1.2vw; flex-wrap: wrap; }
+    .t-selo { display: inline-block; font-size: max(10px, 1.6vh); font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+      border-radius: 99px; padding: .3vh 1vw; }
+    .t-selo.sim { background: var(--verde-600); color: #fff; }
+    .t-selo.nao { background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
+    .t-selo.empate { background: var(--laranja-500); color: #fff; }
+
+    .t-vencedores { display: flex; flex-wrap: wrap; gap: 2vw; justify-content: center; }
+    .t-cargo { background: #fff; color: var(--verde-900); border-radius: 3vh; padding: 3.6vh 3vw; text-align: center; min-width: 30vw;
+      border-top: 1.2vh solid var(--laranja-500); opacity: 0; animation: cargo .8s cubic-bezier(.2,1.4,.4,1) forwards; }
+    @keyframes cargo { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+    .t-cargo .c { font-size: max(14px, 2.6vh); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-600); }
+    .t-cargo .n { font-size: max(24px, 6vh); font-weight: 900; line-height: 1.05; margin-top: 1vh; }
+    .t-cargo .v { font-size: max(13px, 2.2vh); color: var(--cinza); margin-top: 1vh; }
+    .t-nota { position: absolute; left: 4vw; right: 4vw; bottom: 1.6vh; font-size: max(11px, 1.7vh); color: rgba(255,255,255,.5); text-align: center; }
+    .t-centro { margin: auto; text-align: center; max-width: 70vw; }
+    .t-centro h2 { font-size: max(28px, 7vh); font-weight: 900; }
+    .t-centro p { font-size: max(16px, 3vh); color: rgba(255,255,255,.75); }
+
+    /* resumo final */
+    .t-resumo { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(26vw, 1fr)); gap: 1.6vw; align-content: start; }
+    .t-resumo .bloco { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 2.2vh; padding: 2vh 1.6vw;
+      opacity: 0; animation: entra .5s ease-out forwards; }
+    .t-resumo .bloco .c { font-size: max(12px, 2vh); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-300); }
+    .t-resumo .bloco .n { font-size: max(15px, 2.9vh); font-weight: 800; line-height: 1.25; margin-top: .6vh; }
+
+    /* controles (aparecem ao mexer o mouse ou tocar na tela) */
+    .t-controles { position: fixed; left: 50%; bottom: 2vh; transform: translate(-50%, 0); z-index: 10; display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center; background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; padding: 10px;
+      transition: opacity .3s, transform .3s; max-width: calc(100vw - 32px); }
+    .t-controles.escondido { opacity: 0; transform: translate(-50%, 12px); pointer-events: none; }
+    .t-controles button { font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer;
+      background: rgba(255,255,255,.12); color: #fff; }
+    .t-controles button:hover { background: rgba(255,255,255,.22); }
+    .t-controles button.principal { background: var(--laranja-600); }
+    .t-controles button.ativo { background: var(--verde-600); }
+    .t-controles kbd { font: inherit; font-size: 11px; opacity: .6; margin-left: 4px; }
+    @media (max-aspect-ratio: 1/1) { .t-contador { grid-template-columns: 1fr; text-align: center; } .t-qr { width: min(60vw, 40vh); } }
+  </style>
+</head>
+<body class="telao">
+  <header>
+    <div class="t-topo">
+      <span id="selo"></span>
+      <div>
+        <div class="t-igreja" id="igreja">Igreja Cristã Presbiteriana Missionária</div>
+        <div class="t-titulo" id="titulo">Eleição de Liderança 2026</div>
+      </div>
+      <div class="t-etapa"><div class="n" id="etapa-n"></div><div class="l" id="etapa-l"></div></div>
+    </div>
+    <div class="t-faixa"></div>
+  </header>
+
+  <main class="t-palco" id="palco">
+    <div class="t-centro"><p>Carregando…</p></div>
+  </main>
+
+  <nav class="t-controles escondido" id="controles" aria-label="Controles do telão">
+    <button data-modo="contador" title="Tecla C">Contador<kbd>C</kbd></button>
+    <button data-modo="resultado" class="principal" title="Tecla R">Mostrar resultado<kbd>R</kbd></button>
+    <button data-modo="resumo" title="Tecla T">Todos os eleitos<kbd>T</kbd></button>
+    <button id="b-qr" title="Tecla Q">QR Code<kbd>Q</kbd></button>
+    <button id="b-cheia" title="Tecla F">Tela cheia<kbd>F</kbd></button>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/comum.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="js/telao.js"></script>
+</body>
+</html>
