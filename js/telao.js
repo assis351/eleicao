@@ -64,7 +64,7 @@ function desenhar() {
   $("#igreja").textContent = d.settings?.church_name || "";
   $("#titulo").textContent = d.settings?.title || "Eleição";
   $("#selo").innerHTML = seloLogo(d.settings?.logo_url, 52);
-  $("#etapa-n").textContent = `Etapa ${d.fase} de 4`;
+  $("#etapa-n").textContent = `Etapa ${d.fase} de ${(d.fases || []).length || 5}`;
   $("#etapa-l").textContent = d.faseLabel;
   $$("[data-modo]").forEach((b) => b.classList.toggle("ativo", b.dataset.modo === modo));
   $("#b-qr").classList.toggle("ativo", mostrarQR);
@@ -153,7 +153,7 @@ function desenharResultado(d) {
     const empate = cat.candidates.some((c) => c.status === "empate");
     const escolha = cat.tipo === "escolha";
     palco.innerHTML = `<section class="t-res">
-      <div class="t-vencedores">
+      <div class="t-vencedores ${ganhos.length + (empate ? 1 : 0) >= 3 ? "compacto" : ""}">
         ${ganhos.map((c, i) => `<div class="t-cargo" style="animation-delay:${(0.3 + i * 0.6).toFixed(1)}s">
           <div class="c">${esc(c.cargo || cat.singular)}</div>
           <div class="n">${esc(c.name)}</div>
@@ -192,14 +192,16 @@ function desenharResumo(d) {
     if (cat.fase === 1) {
       blocos.push([cat.label, eleitos.length ? eleitos.map((c) => esc(c.name)).join("<br>") : "Nenhum eleito"]);
     } else if (eleitos.length) {
-      eleitos.forEach((c) => blocos.push([c.cargo || cat.singular, esc(c.name)]));
+      // quem só "continua Pastor" já aparece no bloco de Pastores
+      eleitos.filter((c) => !cat.demais || c.cargo !== cat.demais)
+        .forEach((c) => blocos.push([c.cargo || cat.singular, esc(c.name)]));
     } else {
       const andamento = cat.fase === d.fase && d.faseAberta;
       blocos.push([cat.label, cat.candidates.some((c) => c.status === "empate") ? "Empate" : andamento ? "Votação em andamento" : "A definir"]);
     }
   });
-  const faltam = { 2: ["Tesoureiro"], 3: ["1º Secretário", "2º Secretário"], 4: ["Exame de Contas"] };
-  for (let f = d.fase + 1; f <= 4; f++) faltam[f].forEach((c) => blocos.push([c, '<span style="opacity:.55">A definir</span>']));
+  const faltam = { 2: ["Tesoureiro"], 3: ["1º Secretário", "2º Secretário"], 4: ["Exame de Contas"], 5: ["Presidente", "Vice-presidente"] };
+  for (let f = d.fase + 1; f <= (d.fases || []).length; f++) (faltam[f] || []).forEach((c) => blocos.push([c, '<span style="opacity:.55">A definir</span>']));
   palco.innerHTML = `<section class="t-resumo">
     ${blocos.map(([cargo, nome], i) => `<div class="bloco" style="animation-delay:${(i * 0.12).toFixed(2)}s">
       <div class="c">${esc(cargo)}</div><div class="n">${nome}</div></div>`).join("")}
