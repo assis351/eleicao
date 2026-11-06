@@ -200,10 +200,19 @@ textarea.campo { min-height: 90px; resize: vertical; }
 .botao-voto.nao { border: 2px solid rgba(185, 28, 28, .4); color: var(--vermelho-700); }
 .botao-voto.nao:hover { background: #fef2f2; }
 .botao-voto.nao.ativo { background: var(--vermelho-700); border-color: var(--vermelho-700); color: #fff; }
+.botoes-voto.tres { grid-template-columns: 1fr 1fr 1fr; }
+.botao-voto.branco { border: 2px solid rgba(75, 85, 99, .4); color: #4b5563; }
+.botao-voto.branco:hover { background: #f3f4f6; }
+.botao-voto.branco.ativo { background: #4b5563; border-color: #4b5563; color: #fff; }
+.candidato.marcado-branco { border-color: #9ca3af; box-shadow: 0 0 0 3px rgba(156, 163, 175, .4); }
+.etiqueta.branco { background: #6b7280; color: #fff; }
+.barra-sn .b { background: #9ca3af; transition: width .7s; }
+.numeros-sn .b { color: #4b5563; }
 .botao-voto:focus-visible { outline: 3px solid var(--laranja-300); outline-offset: 2px; }
 @media (min-width: 640px) {
   .candidato { flex-direction: row; align-items: center; }
   .botoes-voto { width: 230px; }
+  .botoes-voto.tres { width: 320px; }
 }
 
 .revisao-bloco + .revisao-bloco { margin-top: 16px; }
