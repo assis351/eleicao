@@ -200,7 +200,7 @@ function desenharResumo(d) {
       blocos.push([cat.label, cat.candidates.some((c) => c.status === "empate") ? "Empate" : andamento ? "Votação em andamento" : "A definir"]);
     }
   });
-  const faltam = { 2: ["Tesoureiro"], 3: ["1º Secretário", "2º Secretário"], 4: ["Exame de Contas"], 5: ["Presidente", "Vice-presidente"] };
+  const faltam = { 2: ["Presidente", "Vice-presidente"], 3: ["Tesoureiro"], 4: ["1º Secretário", "2º Secretário"], 5: ["Exame de Contas"] };
   for (let f = d.fase + 1; f <= (d.fases || []).length; f++) (faltam[f] || []).forEach((c) => blocos.push([c, '<span style="opacity:.55">A definir</span>']));
   palco.innerHTML = `<section class="t-resumo">
     ${blocos.map(([cargo, nome], i) => `<div class="bloco" style="animation-delay:${(i * 0.12).toFixed(2)}s">
