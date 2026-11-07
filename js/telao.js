@@ -4,6 +4,9 @@
 //  - Contador: votos chegando ao vivo + QR Code para os membros entrarem
 //  - Resultado: só aparece quando você clicar em "Mostrar resultado" (ou tecla R)
 //  - Todos os eleitos: resumo de todos os cargos definidos até agora (tecla T)
+//  - Mensagem: versículos/avisos do painel (tecla M). Aparece sozinha entre uma etapa e outra.
+//  - Suspense: o resultado revela os eleitos um por um (tecla S liga/desliga;
+//    Espaço avança, Esc pula a revelação, R de novo repete)
 // Os controles aparecem ao mexer o mouse ou tocar na tela.
 // ================================================================
 const TELAO_INTERVALO_MS = 5000;
@@ -13,7 +16,10 @@ const endereco = enderecoDoSite();
 let dados = null;           // último resultado vindo do servidor
 let desenhado = "";         // assinatura do que está na tela (evita piscar)
 let mostrarQR = lerPref("telao_qr", "1") === "1";
-let modo = "contador";      // contador | resultado | resumo
+let modo = "contador";      // contador | resultado | resumo | mensagem
+let suspense = lerPref("telao_suspense", "1") === "1";
+let revelacao = null;       // revelação em andamento: { d, votos, passos, i, timer }
+let msgTimer = null, msgIdx = 0;
 let faseDoModo = 0;
 
 function lerPref(chave, padrao) { try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; } }
@@ -25,6 +31,9 @@ function lerModo() {
   catch { modo = "contador"; }
 }
 function mudarModo(novo) {
+  // "Mostrar resultado" de novo, já no resultado: repete a revelação com suspense
+  if (novo === "resultado" && modo === "resultado" && dados && !revelacao) marcarRevelado(dados, votosDaEtapa(dados), false);
+  pararRevelacao();
   modo = novo; faseDoModo = dados ? dados.fase : 0;
   try { sessionStorage.setItem("telao_modo", JSON.stringify({ modo, fase: faseDoModo })); } catch { /* ok */ }
   desenhado = "";
@@ -68,17 +77,32 @@ function desenhar() {
   $("#etapa-l").textContent = d.faseLabel;
   $$("[data-modo]").forEach((b) => b.classList.toggle("ativo", b.dataset.modo === modo));
   $("#b-qr").classList.toggle("ativo", mostrarQR);
+  $("#b-susp").classList.toggle("ativo", suspense);
 
   const votos = votosDaEtapa(d);
+  if (modo !== "resultado") pararRevelacao();
+
+  // entre etapas (etapa ainda não aberta e sem votos) o telão mostra as mensagens sozinho
+  const entreEtapas = modo === "contador" && !d.faseAberta && votos === 0;
+  if (modo === "mensagem" || entreEtapas) {
+    const assin = ["mensagem", d.fase, d.faseAberta, votos > 0, d.settings?.telao_mensagens || ""].join("|");
+    if (assin === desenhado) return;
+    desenhado = assin;
+    return desenharMensagem(d, votos);
+  }
+  pararMensagens();
+
   if (modo === "contador") {
     const assin = ["contador", d.fase, d.faseAberta, mostrarQR, d.settings?.presentes || 0].join("|");
     if (assin === desenhado) return atualizarNumero(votos);
     desenhado = assin;
     return desenharContador(d, votos);
   }
+  if (modo === "resultado" && revelacao) return; // revelação em andamento: não interrompe
   const assin = [modo, d.fase, d.faseAberta, JSON.stringify(d.categories)].join("|");
   if (assin === desenhado) return;
   desenhado = assin;
+  if (modo === "resultado" && precisaRevelar(d, votos)) return iniciarRevelacao(d, votos);
   modo === "resultado" ? desenharResultado(d) : desenharResumo(d);
 }
 
@@ -217,6 +241,201 @@ function desenharResumo(d) {
   </section>`;
 }
 
+// ---------- mensagens entre etapas ----------
+// No painel: uma mensagem por bloco (separe com linha em branco). Última linha começando com "—" = referência.
+function listaMensagens(d) {
+  const txt = String(d.settings?.telao_mensagens || "").replace(/\r/g, "").trim();
+  const lista = txt ? txt.split(/\n\s*\n/).map((bloco) => {
+    const linhas = bloco.split("\n").map((l) => l.trim()).filter(Boolean);
+    let ref = "";
+    if (linhas.length > 1 && /^[—–-]/.test(linhas[linhas.length - 1])) ref = linhas.pop().replace(/^[—–-]+\s*/, "");
+    return { texto: linhas.join("\n"), ref };
+  }).filter((m) => m.texto) : [];
+  if (lista.length) return lista;
+  const inicio = d.fase === 1 && !d.faseAberta && !votosDaEtapa(d);
+  return [{ texto: inicio ? "Sejam bem-vindos à assembleia!" : "Aguarde um instante: a mesa está preparando a próxima etapa.", ref: "" }];
+}
+
+function htmlMensagem(m) {
+  const longo = m.texto.length > 200 ? " longo" : "";
+  const texto = esc(m.texto).replace(/\n/g, "<br>");
+  return m.ref
+    ? `<span class="t-msg-aspas" aria-hidden="true">“</span>
+       <div class="t-msg-texto${longo}">${texto}</div><div class="t-msg-ref">${esc(m.ref)}</div>`
+    : `<div class="t-msg-texto aviso${longo}">${texto}</div>`;
+}
+
+function desenharMensagem(d, votos) {
+  pararMensagens();
+  const lista = listaMensagens(d);
+  msgIdx = msgIdx % lista.length;
+  const rodape = d.faseAberta
+    ? `<span class="t-estado"><i></i>Votação aberta</span><span>Vote pelo celular</span>`
+    : votos > 0 ? "Em instantes: o resultado desta etapa"
+    : `A seguir: <strong>Etapa ${d.fase} · ${esc(d.faseLabel)}</strong>`;
+  palco.innerHTML = `<section class="t-msg">
+      <div class="t-msg-caixa" id="t-msg">${htmlMensagem(lista[msgIdx])}</div>
+      ${lista.length > 1 ? `<div class="t-msg-pontos" id="t-msg-pontos">${lista.map((_, i) => `<i class="${i === msgIdx ? "on" : ""}"></i>`).join("")}</div>` : ""}
+      <div class="t-msg-rodape">${rodape}</div>
+    </section>`;
+  if (lista.length < 2) return;
+  msgTimer = setInterval(() => {
+    const caixa = $("#t-msg");
+    if (!caixa) return pararMensagens();
+    caixa.classList.add("saindo");
+    setTimeout(() => {
+      msgIdx = (msgIdx + 1) % lista.length;
+      caixa.innerHTML = htmlMensagem(lista[msgIdx]);
+      caixa.classList.remove("saindo");
+      $$("#t-msg-pontos i").forEach((p, i) => p.classList.toggle("on", i === msgIdx));
+    }, 650);
+  }, 15000);
+}
+
+function pararMensagens() { clearInterval(msgTimer); msgTimer = null; }
+
+// ---------- revelação com suspense ----------
+const chaveRev = (d, votos) => `telao_rev_${d.fase}_${votos}`;
+function jaRevelado(d, votos) { try { return sessionStorage.getItem(chaveRev(d, votos)) === "1"; } catch { return false; } }
+function marcarRevelado(d, votos, sim = true) {
+  try { sim ? sessionStorage.setItem(chaveRev(d, votos), "1") : sessionStorage.removeItem(chaveRev(d, votos)); } catch { /* ok */ }
+}
+// só com a etapa encerrada (resultado final), com votos, e uma vez por etapa
+function precisaRevelar(d, votos) { return suspense && !d.faseAberta && votos > 0 && !jaRevelado(d, votos); }
+
+function montarPassos(d) {
+  const cats = d.categories.filter((c) => c.fase === d.fase);
+  const passos = [{ t: "intro", ms: 3400 }];
+  if (d.fase === 1) {
+    cats.forEach((cat) => {
+      const el = cat.candidates.filter((c) => c.status === "eleito");
+      passos.push({ t: "grupo", cat, el, k: 0, ms: 2400 });
+      el.forEach((_, k) => passos.push({ t: "grupo", cat, el, k: k + 1, ms: k === el.length - 1 ? 3200 : 1500 }));
+    });
+  } else {
+    const cat = cats[0];
+    if (!cat) return passos;
+    const ganhos = cat.candidates.filter((c) => c.status === "eleito");
+    ganhos.forEach((c) => { passos.push({ t: "suspense", cat, c, ms: 2800 }); passos.push({ t: "nome", cat, c, ms: 4200 }); });
+    if (cat.candidates.some((c) => c.status === "empate")) passos.push({ t: "empate", cat, ms: 4200 });
+    else if (!ganhos.length) passos.push({ t: "nenhum", cat, ms: 3600 });
+  }
+  return passos;
+}
+
+function iniciarRevelacao(d, votos) {
+  pararRevelacao();
+  revelacao = { d, votos, passos: montarPassos(d), i: -1, timer: null };
+  proximoPasso();
+}
+
+function proximoPasso() {
+  const r = revelacao;
+  if (!r) return;
+  clearTimeout(r.timer);
+  r.i++;
+  if (r.i >= r.passos.length) return terminarRevelacao();
+  const p = r.passos[r.i];
+  desenharPasso(r.d, r.votos, p);
+  r.timer = setTimeout(proximoPasso, p.ms);
+}
+
+function terminarRevelacao() {
+  if (!revelacao) return;
+  const { d, votos } = revelacao;
+  pararRevelacao();
+  marcarRevelado(d, votos);
+  desenharResultado(dados || d);
+}
+
+function pararRevelacao() {
+  if (revelacao) clearTimeout(revelacao.timer);
+  revelacao = null;
+}
+
+const DICA_REV = '<div class="t-rev-dica">Espaço ou clique: avançar · Esc: pular</div>';
+const PONTOS = '<div class="t-rev-pontos" aria-hidden="true"><i></i><i></i><i></i></div>';
+
+function desenharPasso(d, votos, p) {
+  if (p.t === "intro") {
+    palco.innerHTML = `<section class="t-rev">
+      <div class="t-rev-sub">Resultado · Etapa ${d.fase}</div>
+      <h2 class="t-rev-titulo">${esc(d.faseLabel)}</h2>
+      <p>${votos} ${votos === 1 ? "voto apurado" : "votos apurados"}</p>${PONTOS}</section>${DICA_REV}`;
+    return;
+  }
+  if (p.t === "grupo") {
+    const grade = $("#t-rev-grade");
+    if (p.k > 0 && grade && grade.dataset.cat === p.cat.key) {
+      const c = p.el[p.k - 1];
+      grade.insertAdjacentHTML("beforeend", `<div class="t-rev-nome novo">${esc(c.name)}</div>`);
+      $("#t-rev-conta").textContent = `${p.k} de ${p.el.length}`;
+      return confete(60);
+    }
+    palco.innerHTML = `<section class="t-rev grupo">
+      <div class="t-rev-sub">Eleitos</div>
+      <h2 class="t-rev-titulo">${esc(p.cat.label)}</h2>
+      ${p.el.length ? `<p id="t-rev-conta">${p.el.length} ${p.el.length === 1 ? "eleito" : "eleitos"}</p>` : "<p>Nenhum eleito nesta etapa</p>"}
+      <div class="t-rev-grade ${p.el.length > 8 ? "muitos" : ""}" id="t-rev-grade" data-cat="${esc(p.cat.key)}"></div>
+    </section>${DICA_REV}`;
+    return;
+  }
+  const cargo = p.c ? (p.c.cargo || p.cat.singular) : p.cat.label;
+  if (p.t === "suspense") {
+    palco.innerHTML = `<section class="t-rev">
+      <div class="t-rev-cargo">${esc(cargo)}</div>
+      <div class="t-rev-card misterio"><span>?</span></div>${PONTOS}</section>${DICA_REV}`;
+    return;
+  }
+  if (p.t === "nome") {
+    const escolha = p.cat.tipo === "escolha";
+    palco.innerHTML = `<section class="t-rev">
+      <div class="t-rev-cargo">${esc(cargo)}</div>
+      <div class="t-rev-card revelado"><div class="n">${esc(p.c.name)}</div>
+        <div class="v">${p.c.yes} voto${p.c.yes === 1 ? "" : "s"}${escolha ? "" : " SIM"} · ${pct(p.c.percent)}</div></div>
+    </section>${DICA_REV}`;
+    return confete(180);
+  }
+  palco.innerHTML = `<section class="t-rev">
+    <div class="t-rev-cargo">${esc(p.cat.label)}</div>
+    <div class="t-rev-card revelado"><div class="n">${p.t === "empate" ? "Empate" : "Ninguém eleito"}</div>
+      <div class="v">${p.t === "empate" ? "A votação desta etapa será refeita." : "Nenhum candidato alcançou o necessário."}</div></div>
+  </section>${DICA_REV}`;
+}
+
+// chuva de confete (leve, sem biblioteca)
+function confete(qtd) {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const cv = document.createElement("canvas");
+  cv.className = "t-confete";
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+  document.body.appendChild(cv);
+  const g = cv.getContext("2d");
+  g.scale(dpr, dpr);
+  const cores = ["#e8792a", "#f5b67e", "#a3e635", "#6f901b", "#ffffff", "#fcd34d"];
+  const W = innerWidth, H = innerHeight;
+  const ps = Array.from({ length: qtd }, () => ({
+    x: W / 2 + (Math.random() - 0.5) * W * 0.3, y: H * 0.35,
+    vx: (Math.random() - 0.5) * W * 0.018, vy: -(Math.random() * H * 0.022 + H * 0.008),
+    r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+    w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, c: cores[(Math.random() * cores.length) | 0],
+  }));
+  const ini = performance.now();
+  const passo = (agora) => {
+    const t = agora - ini;
+    g.clearRect(0, 0, W, H);
+    ps.forEach((p) => {
+      p.vy += H * 0.0006; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      g.save(); g.translate(p.x, p.y); g.rotate(p.r);
+      g.globalAlpha = Math.max(0, 1 - t / 2800);
+      g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
+    });
+    if (t < 2800) requestAnimationFrame(passo); else cv.remove();
+  };
+  requestAnimationFrame(passo);
+}
+
 // ---------- controles ----------
 let timerControles = null;
 function mostrarControles() {
@@ -233,12 +452,20 @@ function mostrarControles() {
 
 $$("[data-modo]").forEach((b) => b.addEventListener("click", () => mudarModo(b.dataset.modo)));
 $("#b-qr").addEventListener("click", alternarQR);
+$("#b-susp").addEventListener("click", alternarSuspense);
+palco.addEventListener("click", () => { if (revelacao) proximoPasso(); });
 $("#b-cheia").addEventListener("click", telaCheia);
 
 function alternarQR() {
   mostrarQR = !mostrarQR;
   gravarPref("telao_qr", mostrarQR ? "1" : "0");
   desenhado = "";
+  desenhar();
+}
+function alternarSuspense() {
+  suspense = !suspense;
+  gravarPref("telao_suspense", suspense ? "1" : "0");
+  if (!suspense && revelacao) terminarRevelacao();
   desenhar();
 }
 function telaCheia() {
@@ -249,7 +476,11 @@ function telaCheia() {
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
+  if (revelacao && (k === " " || k === "arrowright" || k === "enter")) { e.preventDefault(); return proximoPasso(); }
+  if (revelacao && k === "escape") return terminarRevelacao();
   if (k === "c") mudarModo("contador");
+  else if (k === "m") mudarModo("mensagem");
+  else if (k === "s") alternarSuspense();
   else if (k === "r") mudarModo("resultado");
   else if (k === "t") mudarModo("resumo");
   else if (k === "q") alternarQR();
