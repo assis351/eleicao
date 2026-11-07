@@ -353,3 +353,17 @@ table.tabela { width: 100%; border-collapse: collapse; font-size: 15px; }
 .grade-campos .grupo + .grupo { margin-top: 0; }
 .grade-campos .inteira { grid-column: 1 / -1; }
 @media (max-width: 560px) { .grade-campos { grid-template-columns: 1fr; } }
+
+/* ---------- Botão A+ (tamanho da letra) e código de votação ---------- */
+main.conteudo { zoom: var(--zoom-letra, 1); }
+.botao-letra { margin-left: auto; flex: none; font: inherit; font-weight: 800; font-size: 18px; line-height: 1;
+  min-width: 52px; height: 44px; padding: 0 12px; border-radius: 12px; cursor: pointer;
+  background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .35); }
+.botao-letra:hover { background: rgba(255, 255, 255, .22); }
+.botao-letra.ativo { background: var(--laranja-500); border-color: var(--laranja-500); }
+.campo-codigo { font-family: ui-monospace, Consolas, monospace; font-size: 30px; font-weight: 700; letter-spacing: .25em;
+  text-align: center; text-transform: uppercase; padding: 14px; }
+.campo-codigo::placeholder { letter-spacing: .08em; font-size: 20px; font-weight: 500; }
+.quorum { margin-top: 10px; }
+.quorum-barra { height: 10px; border-radius: 99px; background: var(--verde-100); overflow: hidden; margin-top: 6px; }
+.quorum-barra b { display: block; height: 100%; background: linear-gradient(90deg, var(--verde-600), var(--laranja-500)); border-radius: 99px; }
