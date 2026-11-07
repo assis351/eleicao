@@ -367,3 +367,112 @@ main.conteudo { zoom: var(--zoom-letra, 1); }
 .quorum { margin-top: 10px; }
 .quorum-barra { height: 10px; border-radius: 99px; background: var(--verde-100); overflow: hidden; margin-top: 6px; }
 .quorum-barra b { display: block; height: 100%; background: linear-gradient(90deg, var(--verde-600), var(--laranja-500)); border-radius: 99px; }
+
+/* ================================================================
+   TEMA ESCURO (padrão no painel e na votação; o botão ☀/☾ do topo troca)
+   O tema fica guardado no aparelho. O telão, a ata e os cartões impressos não mudam.
+   ================================================================ */
+:root[data-tema="escuro"] {
+  color-scheme: dark;
+  --fundo: #0e150a;
+  --sup: #172112;          /* cartões */
+  --sup2: #1f2c19;         /* cabeçalhos de tabela, botões de seleção */
+  --texto: #e9eedf;
+  --suave: rgba(233, 238, 223, .66);
+  --verde-texto: #b5d35a;  /* links e "SIM" legíveis no escuro */
+  --borda: rgba(255, 255, 255, .10);
+  --sombra: 0 1px 2px rgba(0, 0, 0, .45), 0 8px 24px rgba(0, 0, 0, .28);
+  --verde-100: rgba(111, 144, 27, .20);
+  --laranja-100: rgba(232, 121, 42, .18);
+  --vermelho-100: rgba(239, 68, 68, .18);
+  --cinza: #c4cbb9;
+  --branco-tx: #d1d5db;
+  --caixa-cinza: rgba(255, 255, 255, .06);
+  --sim-tx: #b5d35a;
+  --nao-tx: #fca5a5;
+}
+[data-tema="escuro"] body { color: var(--texto); background: var(--fundo); }
+[data-tema="escuro"] a:not(.btn) { color: var(--verde-texto); }
+[data-tema="escuro"] .topo { background: #182612; box-shadow: 0 1px 0 rgba(255, 255, 255, .06); }
+[data-tema="escuro"] .card,
+[data-tema="escuro"] .vigia,
+[data-tema="escuro"] .modal,
+[data-tema="escuro"] .aviso-etapa-caixa { background: var(--sup); }
+[data-tema="escuro"] .btn-verde { background: #2f4a22; }
+[data-tema="escuro"] .btn-verde:hover:not(:disabled) { background: #3a5a2a; }
+[data-tema="escuro"] .btn-contorno { background: transparent; color: var(--texto); border-color: rgba(255, 255, 255, .22); }
+[data-tema="escuro"] .btn-contorno:hover:not(:disabled) { border-color: rgba(255, 255, 255, .5); }
+[data-tema="escuro"] .link-btn.verde { color: var(--verde-texto); }
+[data-tema="escuro"] .link-btn.laranja { color: var(--laranja-300); }
+[data-tema="escuro"] .link-btn.vermelho { color: #fca5a5; }
+[data-tema="escuro"] .rotulo { color: #c9d6b8; }
+[data-tema="escuro"] .campo { background: #0b1108; color: var(--texto); border-color: rgba(255, 255, 255, .18); }
+[data-tema="escuro"] .campo::placeholder { color: rgba(233, 238, 223, .38); }
+[data-tema="escuro"] .alerta.erro { color: #fecaca; }
+[data-tema="escuro"] .alerta.info { color: var(--texto); }
+[data-tema="escuro"] .alerta.aviso { color: #fde7d2; }
+[data-tema="escuro"] .etiqueta.nao-eleito { color: #fecaca; }
+[data-tema="escuro"] .etiqueta.neutra,
+[data-tema="escuro"] .avatar { color: #c9d6b8; }
+[data-tema="escuro"] .texto-suave,
+[data-tema="escuro"] .candidato .desc,
+[data-tema="escuro"] .progresso .nome,
+[data-tema="escuro"] .comprovante dt,
+[data-tema="escuro"] .numero .r,
+[data-tema="escuro"] .ao-vivo,
+[data-tema="escuro"] .ranking .pos,
+[data-tema="escuro"] .lista-admin .meio .d,
+[data-tema="escuro"] .cab-lista small,
+[data-tema="escuro"] .tabela td.vazio { color: var(--suave); }
+[data-tema="escuro"] .progresso li.atual .nome { color: var(--texto); }
+[data-tema="escuro"] .progresso .barra,
+[data-tema="escuro"] .barra-sn { background: rgba(255, 255, 255, .12); }
+[data-tema="escuro"] .contador { background: rgba(14, 21, 10, .92); }
+[data-tema="escuro"] .contador span { color: #c9d6b8; }
+[data-tema="escuro"] .contador span.completo { color: #fff; }
+
+/* botões SIM / NÃO / BRANCO da cédula */
+[data-tema="escuro"] .botao-voto { background: #0f170b; }
+[data-tema="escuro"] .botao-voto.sim { color: var(--verde-texto); border-color: rgba(181, 211, 90, .45); }
+[data-tema="escuro"] .botao-voto.sim:hover { background: rgba(111, 144, 27, .16); }
+[data-tema="escuro"] .botao-voto.nao { color: #fca5a5; border-color: rgba(248, 113, 113, .45); }
+[data-tema="escuro"] .botao-voto.nao:hover { background: rgba(239, 68, 68, .12); }
+[data-tema="escuro"] .botao-voto.branco { color: var(--branco-tx); border-color: rgba(209, 213, 219, .35); }
+[data-tema="escuro"] .botao-voto.branco:hover { background: rgba(255, 255, 255, .06); }
+[data-tema="escuro"] .botao-voto.sim.ativo,
+[data-tema="escuro"] .botao-voto.nao.ativo,
+[data-tema="escuro"] .botao-voto.branco.ativo { color: #fff; }
+[data-tema="escuro"] .numeros-sn .s { color: var(--verde-texto); }
+[data-tema="escuro"] .numeros-sn .n { color: #fca5a5; }
+[data-tema="escuro"] .numeros-sn .b { color: var(--branco-tx); }
+
+/* página inicial */
+[data-tema="escuro"] .inicio { background: var(--fundo); }
+[data-tema="escuro"] .inicio-centro p.chamada strong,
+[data-tema="escuro"] .aviso-etapa-caixa p strong { color: var(--verde-texto); }
+[data-tema="escuro"] .logo-completa { background: #f7f8f2; border-radius: 28px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+
+/* painel */
+[data-tema="escuro"] .categoria-res > header { background: #24381b; }
+[data-tema="escuro"] .abas button.ativa { background: var(--fundo); color: var(--texto); }
+[data-tema="escuro"] .seletor-cat button { background: var(--sup2); color: var(--texto); border-color: rgba(255, 255, 255, .14); }
+[data-tema="escuro"] .seletor-cat button.ativo { border-color: var(--laranja-500); background: var(--laranja-100); }
+[data-tema="escuro"] .tabela th { background: var(--sup2); }
+[data-tema="escuro"] .zona-perigo { background: rgba(239, 68, 68, .08); border-color: rgba(248, 113, 113, .35); }
+[data-tema="escuro"] .zona-perigo strong { color: #fecaca; }
+[data-tema="escuro"] .login-tela { background: radial-gradient(ellipse at 30% 0%, #24381b, #0e150a 70%); }
+[data-tema="escuro"] .modal-fundo,
+[data-tema="escuro"] .aviso-etapa { background: rgba(5, 8, 3, .8); }
+@media print { [data-tema="escuro"] body { background: #fff; color: #000; } }
+
+/* botão de tema (☀ / ☾) */
+.botao-tema { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; padding: 0;
+  border-radius: 12px; cursor: pointer; background: rgba(255, 255, 255, .12); color: #fff; border: 1px solid rgba(255, 255, 255, .35); }
+.botao-tema:hover { background: rgba(255, 255, 255, .22); }
+.botao-tema svg { width: 22px; height: 22px; }
+.botao-letra + .botao-tema, .botao-tema + .botao-letra { margin-left: 0; }
+.topo .acoes .botao-tema { width: 36px; height: 36px; border-radius: 10px; }
+.botao-tema.flutuante { position: fixed; top: 14px; right: 14px; z-index: 20; background: rgba(34, 52, 26, .08); color: var(--verde-900);
+  border-color: rgba(34, 52, 26, .2); }
+[data-tema="escuro"] .botao-tema.flutuante { background: rgba(255, 255, 255, .08); color: var(--texto); border-color: rgba(255, 255, 255, .2); }
+[data-tema="escuro"] .topo .acoes a:not(.btn) { color: var(--laranja-300); }
