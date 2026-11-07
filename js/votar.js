@@ -19,6 +19,8 @@ const estado = {
   jaVotou: false,
   enviando: false,
   comprovante: null,
+  modoCodigo: false,   // "votar com código": o membro digita o código do cartão
+  autoConferir: false, // código veio do QR do cartão: confere sozinho
 };
 
 const app = document.getElementById("app");
@@ -34,8 +36,15 @@ const COMPROVANTE = () => N() + 2;
   $("#selo").innerHTML = seloLogo(dados.logo_url, 42);
   $("#igreja").textContent = dados.church_name;
   $("#titulo").textContent = dados.fase > 1 ? `${dados.title} · ${dados.fase_label}` : dados.title;
-  // Sem identificação: vai direto para a cédula (e bloqueia 2º voto neste aparelho, por etapa)
-  if (!dados.require_id) {
+  if (dados.usar_codigo) {
+    // Com código: o próprio código controla 1 voto por etapa (o aparelho pode ser emprestado)
+    estado.modoCodigo = true;
+    const daUrl = new URLSearchParams(location.search).get("codigo");
+    if (daUrl) { guardarCodigo(daUrl); history.replaceState(null, "", location.pathname); }
+    estado.doc = lerCodigo();
+    estado.autoConferir = !!estado.doc;
+  } else if (!dados.require_id) {
+    // Sem identificação: vai direto para a cédula (e bloqueia 2º voto neste aparelho, por etapa)
     if (dados.status === "open" && jaVotouNesteAparelho())
       return aviso("Você já votou", `Este aparelho já registrou um voto nesta etapa (${dados.fase_label}). Obrigado!`,
         dados.fase < (dados.fases || []).length);
@@ -55,6 +64,10 @@ function jaVotouNesteAparelho() {
 function marcarAparelho() {
   try { localStorage.setItem(chaveAparelho(), new Date().toISOString()); } catch { /* sem armazenamento */ }
 }
+// o código fica guardado neste aparelho para as próximas etapas
+function guardarCodigo(c) { try { localStorage.setItem("codigo_votacao", String(c).trim().toUpperCase()); } catch { /* ok */ } }
+function lerCodigo() { try { return localStorage.getItem("codigo_votacao") || ""; } catch { return ""; } }
+function esquecerCodigo() { try { localStorage.removeItem("codigo_votacao"); } catch { /* ok */ } }
 
 function candidatosDa(cat) {
   return estado.info.candidates.filter((c) => c.category === cat);
@@ -104,7 +117,55 @@ function progresso() {
 }
 
 // ---------- 0: identificação ----------
+function telaCodigo() {
+  const erroHtml = estado.erro
+    ? `<div class="alerta ${estado.jaVotou ? "aviso" : "erro"}" role="alert">
+         ${estado.jaVotou ? '<strong class="grande">Este código já votou</strong>' : ""}${esc(estado.erro)}</div>`
+    : "";
+  app.innerHTML = `
+    <form id="form-id" class="card pad" autocomplete="off">
+      <h2 class="titulo-etapa">Seu código de votação</h2>
+      <p class="texto-suave">Digite o código que está no seu cartão. Ele vale <strong>um voto em cada etapa</strong>.</p>
+      <div class="grupo mt-g">
+        <label class="rotulo" for="doc">Código</label>
+        <input id="doc" class="campo campo-codigo" inputmode="text" autocapitalize="characters" spellcheck="false"
+          maxlength="14" placeholder="EX: K7PD4X" required value="${esc(estado.doc)}">
+      </div>
+      ${erroHtml}
+      <button class="btn btn-verde largura-total mt-g" ${estado.enviando ? "disabled" : ""}>
+        ${estado.enviando ? "Conferindo…" : "Continuar"}</button>
+      ${estado.doc && !estado.enviando ? `<p style="text-align:center;margin:14px 0 0">
+        <button type="button" class="link-btn pequeno" id="outro-codigo">Usar outro código</button></p>` : ""}
+      <p class="pequeno texto-suave" style="margin-bottom:0">O código só confere que você pode votar. O seu voto continua secreto.</p>
+    </form>`;
+
+  const conferir = async () => {
+    estado.erro = ""; estado.jaVotou = false; estado.enviando = true;
+    desenhar();
+    const { ok, dados } = await chamar("check", { doc: estado.doc });
+    estado.enviando = false;
+    if (!ok) {
+      estado.erro = dados.error || "Erro inesperado.";
+      estado.jaVotou = !!dados.alreadyVoted;
+      return desenhar();
+    }
+    guardarCodigo(estado.doc);
+    irPara(1);
+  };
+  $("#form-id").addEventListener("submit", (e) => {
+    e.preventDefault();
+    estado.doc = $("#doc").value.trim().toUpperCase();
+    conferir();
+  });
+  $("#outro-codigo")?.addEventListener("click", () => {
+    esquecerCodigo(); estado.doc = ""; estado.erro = ""; estado.jaVotou = false;
+    desenhar(); $("#doc").focus();
+  });
+  if (estado.autoConferir) { estado.autoConferir = false; conferir(); }
+}
+
 function telaIdentificacao() {
+  if (estado.modoCodigo) return telaCodigo();
   const erroHtml = estado.erro
     ? `<div class="alerta ${estado.jaVotou ? "aviso" : "erro"}" role="alert">
          ${estado.jaVotou ? '<strong class="grande">Você já votou</strong>' : ""}${esc(estado.erro)}</div>`
