@@ -50,7 +50,7 @@ function abrirFormularioAta() {
         <div class="grupo"><label class="rotulo" for="a-secretario">Secretário(a) da assembleia</label>
           <input id="a-secretario" class="campo" value="${esc(d.secretario)}"></div>
         <div class="grupo"><label class="rotulo" for="a-presentes">Membros presentes (quórum)</label>
-          <input id="a-presentes" type="number" min="0" class="campo" value="${esc(d.presentes)}"></div>
+          <input id="a-presentes" type="number" min="0" class="campo" value="${esc(d.presentes)}" placeholder="vazio = o do painel"></div>
         <div class="grupo"><label class="rotulo" for="a-arrolados">Total de membros com direito a voto</label>
           <input id="a-arrolados" type="number" min="0" class="campo" value="${esc(d.arrolados)}" placeholder="opcional"></div>
         <div class="grupo inteira"><label class="rotulo" for="a-obs">Observações (opcional)</label>
@@ -148,7 +148,7 @@ async function montarAta(a) {
   const partes = [];
 
   // abertura
-  const presentes = parseInt(a.presentes, 10), arrolados = parseInt(a.arrolados, 10);
+  const presentes = parseInt(a.presentes, 10) || r.settings?.presentes || 0, arrolados = parseInt(a.arrolados, 10);
   let abertura = `${dataPorExtenso(a.data)}`;
   if (a.hora) abertura += `, às ${horaPorExtenso(a.hora)}`;
   if (a.local) abertura += `, ${esc(a.local)}`;
