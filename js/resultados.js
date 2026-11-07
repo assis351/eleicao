@@ -140,7 +140,7 @@ function iniciarResultados(container, opcoes = {}) {
   function linhaBrancoEscolha(cat) {
     const tv = cat.candidates.length ? cat.candidates[0].totalVotos : 0;
     const pct = tv ? (cat.blanks / tv) * 100 : 0;
-    return `<div class="ranking" style="margin-top:10px"><div style="border-radius:12px;padding:10px;background:#f3f4f6">
+    return `<div class="ranking" style="margin-top:10px"><div style="border-radius:12px;padding:10px;background:var(--caixa-cinza,#f3f4f6)">
       <div class="nome-l" style="font-weight:700">Votos em branco <span class="etiqueta branco">BRANCO</span></div>
       <div class="barra-sn"><div class="b" style="width:${pct}%"></div></div>
       <div class="numeros-sn"><span class="b"><strong>${cat.blanks} voto${cat.blanks === 1 ? "" : "s"}</strong> (${porcentagem(pct)})</span></div>
@@ -182,6 +182,8 @@ function iniciarResultados(container, opcoes = {}) {
 
   async function desenharGraficos(r) {
     try { await carregarScript(CDN.chart); } catch { return; } // sem internet: fica só o ranking
+    const escuro = document.documentElement.dataset.tema === "escuro";
+    const corTexto = escuro ? "#e9eedf" : "#22341a", corGrade = escuro ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)";
     for (const cat of r.categories) {
       const canvas = document.getElementById(`grafico-${cat.key}`);
       if (!canvas) continue;
@@ -203,10 +205,10 @@ function iniciarResultados(container, opcoes = {}) {
           maintainAspectRatio: false,
           animation: false,
           scales: {
-            x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
-            y: { stacked: true, ticks: { color: "#22341a", font: { size: 13, weight: "600" } } },
+            x: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: corTexto }, grid: { color: corGrade } },
+            y: { stacked: true, ticks: { color: corTexto, font: { size: 13, weight: "600" } }, grid: { color: corGrade } },
           },
-          plugins: { legend: { position: "bottom" } },
+          plugins: { legend: { position: "bottom", labels: { color: corTexto } } },
         },
       });
     }
@@ -214,6 +216,7 @@ function iniciarResultados(container, opcoes = {}) {
 
   buscar();
   setInterval(buscar, INTERVALO_MS);
+  document.addEventListener("temamudou", () => { if (ultimo) desenharGraficos(ultimo); });
 }
 
 // ---------- Exportação ----------
