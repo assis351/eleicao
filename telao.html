@@ -99,6 +99,61 @@
     .t-resumo .bloco .c { font-size: max(12px, 2vh); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-300); }
     .t-resumo .bloco .n { font-size: max(15px, 2.9vh); font-weight: 800; line-height: 1.25; margin-top: .6vh; }
 
+    /* mensagens entre etapas (versículos e avisos) */
+    .t-msg { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4vh; }
+    .t-msg-caixa { max-width: 80vw; transition: opacity .6s, transform .6s; }
+    .t-msg-caixa.saindo { opacity: 0; transform: translateY(-1.5vh); }
+    .t-msg-aspas { display: block; font-family: Georgia, "Times New Roman", serif; font-size: max(60px, 18vh); line-height: .6; height: 8vh;
+      color: var(--laranja-500); }
+    .t-msg-texto { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: max(24px, 6.4vh); line-height: 1.25;
+      text-wrap: balance; }
+    .t-msg-texto.longo { font-size: max(20px, 4.6vh); }
+    .t-msg-texto.aviso { font-family: inherit; font-style: normal; font-weight: 800; font-size: max(26px, 7vh); line-height: 1.12; }
+    .t-msg-texto.aviso.longo { font-size: max(20px, 4.8vh); }
+    .t-msg-ref { margin-top: 3.4vh; font-size: max(16px, 3.2vh); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--laranja-300); }
+    .t-msg-pontos { display: flex; gap: 1.2vh; }
+    .t-msg-pontos i { width: 1.3vh; height: 1.3vh; border-radius: 50%; background: rgba(255,255,255,.22); transition: background .4s; }
+    .t-msg-pontos i.on { background: var(--laranja-500); }
+    .t-msg-rodape { font-size: max(14px, 2.8vh); color: rgba(255,255,255,.7); display: flex; align-items: center; gap: 1.4vw;
+      flex-wrap: wrap; justify-content: center; }
+    .t-msg-rodape strong { color: #fff; }
+    .t-msg-rodape .t-estado { font-size: max(14px, 2.4vh); }
+
+    /* revelação do resultado com suspense */
+    .t-rev { margin: auto; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2.6vh; }
+    .t-rev-sub { font-size: max(14px, 2.8vh); font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--laranja-300); }
+    .t-rev-titulo { font-size: max(32px, 9vh); font-weight: 900; line-height: 1; margin: 0; text-wrap: balance; }
+    .t-rev p { font-size: max(16px, 3.2vh); color: rgba(255,255,255,.72); margin: 0; }
+    .t-rev-pontos { display: flex; gap: 1.8vh; margin-top: 2vh; }
+    .t-rev-pontos i { width: 2.4vh; height: 2.4vh; border-radius: 50%; background: var(--laranja-500); animation: tambor .9s infinite ease-in-out; }
+    .t-rev-pontos i:nth-child(2) { animation-delay: .15s; }
+    .t-rev-pontos i:nth-child(3) { animation-delay: .3s; }
+    @keyframes tambor { 0%, 100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-2.2vh); opacity: 1; } }
+    .t-rev-cargo { font-size: max(22px, 5.4vh); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--laranja-300); }
+    .t-rev-card { background: #fff; color: var(--verde-900); border-radius: 4vh; width: min(80vw, 120vh); padding: 6vh 4vw;
+      border-top: 1.4vh solid var(--laranja-500); box-shadow: 0 4vh 10vh rgba(0,0,0,.45); }
+    .t-rev-card.misterio { background: linear-gradient(135deg, #34502a, #1a2a12); color: #fff; border-top-color: var(--verde-600);
+      animation: treme 2.8s ease-in both; }
+    .t-rev-card.misterio span { display: inline-block; font-size: max(56px, 16vh); font-weight: 900; line-height: 1; animation: pulsaQ .9s infinite; }
+    @keyframes pulsaQ { 50% { transform: scale(1.15); color: var(--laranja-300); } }
+    @keyframes treme { 0% { opacity: 0; transform: scale(.9); } 15% { opacity: 1; transform: none; } 70% { transform: none; }
+      76% { transform: rotate(-1deg); } 82% { transform: rotate(1.2deg); } 88% { transform: rotate(-1.4deg); } 94% { transform: rotate(1.4deg); }
+      100% { transform: scale(1.04); } }
+    .t-rev-card.revelado { animation: vira .9s cubic-bezier(.2,1.3,.4,1) both; }
+    @keyframes vira { from { opacity: 0; transform: perspective(1200px) rotateY(90deg) scale(.85); } to { opacity: 1; transform: none; } }
+    .t-rev-card .n { font-size: max(32px, 10vh); font-weight: 900; line-height: 1.02; text-wrap: balance; }
+    .t-rev-card .v { font-size: max(14px, 3vh); color: var(--cinza); margin-top: 2.2vh; }
+    .t-rev-grade { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.8vh 1.6vw; max-width: 92vw; margin-top: 1.6vh; }
+    .t-rev-nome { background: #fff; color: var(--verde-900); border-radius: 2vh; padding: 2.2vh 2.6vw; font-size: max(20px, 4.8vh);
+      font-weight: 900; line-height: 1.1; border-top: .9vh solid var(--laranja-500); box-shadow: 0 2vh 5vh rgba(0,0,0,.3); }
+    .t-rev-grade.muitos .t-rev-nome { font-size: max(16px, 3.4vh); padding: 1.6vh 1.8vw; }
+    .t-rev-nome.novo { animation: cargo .8s cubic-bezier(.2,1.4,.4,1) both; }
+    .t-rev-dica { position: absolute; left: 0; right: 0; bottom: 1.4vh; text-align: center; font-size: max(11px, 1.6vh); color: rgba(255,255,255,.35); }
+    .t-confete { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; }
+    @media (prefers-reduced-motion: reduce) {
+      .t-rev-card, .t-rev-card.misterio span, .t-rev-nome.novo, .t-rev-pontos i { animation: none !important; }
+    }
+
     /* controles (aparecem ao mexer o mouse ou tocar na tela) */
     .t-controles { position: fixed; left: 50%; bottom: 2vh; transform: translate(-50%, 0); z-index: 10; display: flex; gap: 8px; flex-wrap: wrap;
       justify-content: center; background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; padding: 10px;
@@ -134,6 +189,8 @@
     <button data-modo="contador" title="Tecla C">Contador<kbd>C</kbd></button>
     <button data-modo="resultado" class="principal" title="Tecla R">Mostrar resultado<kbd>R</kbd></button>
     <button data-modo="resumo" title="Tecla T">Todos os eleitos<kbd>T</kbd></button>
+    <button data-modo="mensagem" title="Tecla M">Mensagem<kbd>M</kbd></button>
+    <button id="b-susp" title="Tecla S: revelar os eleitos um por um">Suspense<kbd>S</kbd></button>
     <button id="b-qr" title="Tecla Q">QR Code<kbd>Q</kbd></button>
     <button id="b-cheia" title="Tecla F">Tela cheia<kbd>F</kbd></button>
   </nav>
