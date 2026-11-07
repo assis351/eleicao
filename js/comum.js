@@ -139,3 +139,33 @@ function aplicarLetra(n) {
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
 })();
+
+// Tema claro/escuro (escuro é o padrão). O <head> das páginas já aplica o tema antes de desenhar,
+// para não piscar; aqui fica o botão ☀/☾ (id="btn-tema"). Fica guardado no aparelho.
+const ICONE_SOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/></svg>';
+const ICONE_LUA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>';
+function temaAtual() { return document.documentElement.dataset.tema === "claro" ? "claro" : "escuro"; }
+function aplicarTema(t) {
+  document.documentElement.dataset.tema = t;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = t === "escuro" ? "#182612" : "#22341a";
+  const b = document.getElementById("btn-tema");
+  if (b) {
+    b.innerHTML = t === "escuro" ? ICONE_SOL : ICONE_LUA;
+    b.title = b.ariaLabel = t === "escuro" ? "Usar tema claro" : "Usar tema escuro";
+  }
+  document.dispatchEvent(new CustomEvent("temamudou", { detail: t }));
+}
+(function iniciarBotaoTema() {
+  const iniciar = () => {
+    const b = document.getElementById("btn-tema");
+    if (!b) return;
+    aplicarTema(temaAtual());
+    b.addEventListener("click", () => {
+      const novo = temaAtual() === "escuro" ? "claro" : "escuro";
+      try { localStorage.setItem("tema", novo); } catch { /* ok */ }
+      aplicarTema(novo);
+    });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+})();
