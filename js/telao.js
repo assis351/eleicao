@@ -1,15 +1,20 @@
 // ================================================================
 // MODO TELÃO (para projetar no templo)
 // Usa o login do Painel do Administrador feito NESTE computador.
-//  - Contador: votos chegando ao vivo + QR Code para os membros entrarem
-//  - Resultado: só aparece quando você clicar em "Mostrar resultado" (ou tecla R)
+// AUTOMÁTICO: segue o que a mesa faz no painel (aba Etapas):
+//    etapa aberta -> Contador (QR Code + votos ao vivo)
+//    etapa encerrada -> Resultado (com suspense)
+//    próxima etapa ainda fechada -> Mensagens; ao abrir, volta ao Contador
+//  - Os botões/teclas abaixo trocam a tela na hora; na próxima mudança da etapa o automático volta a valer.
+//  - Contador: votos chegando ao vivo + QR Code para os membros entrarem (tecla C)
+//  - Resultado: tecla R
 //  - Todos os eleitos: resumo de todos os cargos definidos até agora (tecla T)
 //  - Mensagem: versículos/avisos do painel (tecla M). Aparece sozinha entre uma etapa e outra.
 //  - Suspense: o resultado revela os eleitos um por um (tecla S liga/desliga;
 //    Espaço avança, Esc pula a revelação, R de novo repete)
 // Os controles aparecem ao mexer o mouse ou tocar na tela.
 // ================================================================
-const TELAO_INTERVALO_MS = 5000;
+const TELAO_INTERVALO_MS = 4000;
 const palco = $("#palco");
 const endereco = enderecoDoSite();
 
@@ -20,22 +25,31 @@ let modo = "contador";      // contador | resultado | resumo | mensagem
 let suspense = lerPref("telao_suspense", "1") === "1";
 let revelacao = null;       // revelação em andamento: { d, votos, passos, i, timer }
 let msgTimer = null, msgIdx = 0;
-let faseDoModo = 0;
+let chaveDoModo = "";       // etapa + aberta/encerrada em que o modo atual foi definido
 
 function lerPref(chave, padrao) { try { return localStorage.getItem(chave) ?? padrao; } catch { return padrao; } }
 function gravarPref(chave, valor) { try { localStorage.setItem(chave, valor); } catch { /* sem armazenamento */ } }
 
-// o modo escolhido vale só para a etapa atual: quando a etapa muda, volta para o contador
+// o modo escolhido vale enquanto a etapa não muda de situação (aberta/encerrada/próxima etapa)
+const chaveEtapa = (d) => `${d.fase}|${d.faseAberta ? 1 : 0}`;
 function lerModo() {
-  try { const m = JSON.parse(sessionStorage.getItem("telao_modo") || "{}"); modo = m.modo || "contador"; faseDoModo = m.fase || 0; }
+  try { const m = JSON.parse(sessionStorage.getItem("telao_modo") || "{}"); modo = m.modo || "contador"; chaveDoModo = m.chave || ""; }
   catch { modo = "contador"; }
+}
+function gravarModo() {
+  try { sessionStorage.setItem("telao_modo", JSON.stringify({ modo, chave: chaveDoModo })); } catch { /* ok */ }
+}
+// aberta: contador · encerrada com votos: resultado · ainda não aberta: contador (que mostra as mensagens)
+function modoAutomatico(d) {
+  return !d.faseAberta && votosDaEtapa(d) > 0 ? "resultado" : "contador";
 }
 function mudarModo(novo) {
   // "Mostrar resultado" de novo, já no resultado: repete a revelação com suspense
   if (novo === "resultado" && modo === "resultado" && dados && !revelacao) marcarRevelado(dados, votosDaEtapa(dados), false);
   pararRevelacao();
-  modo = novo; faseDoModo = dados ? dados.fase : 0;
-  try { sessionStorage.setItem("telao_modo", JSON.stringify({ modo, fase: faseDoModo })); } catch { /* ok */ }
+  modo = novo;
+  if (dados) chaveDoModo = chaveEtapa(dados);
+  gravarModo();
   desenhado = "";
   desenhar();
 }
@@ -48,9 +62,15 @@ async function buscar() {
     if (!dados) palco.innerHTML = `<div class="t-centro"><h2>Sem conexão</h2><p>${esc(d.error || "Tentando de novo…")}</p></div>`;
     return;
   }
-  const novaFase = !dados || dados.fase !== d.fase;
   dados = d;
-  if (novaFase && faseDoModo !== d.fase) { modo = "contador"; faseDoModo = d.fase; }
+  // a mesa abriu, encerrou ou passou de etapa: o telão troca de tela sozinho
+  if (chaveEtapa(d) !== chaveDoModo) {
+    if (modo !== "resultado" || modoAutomatico(d) !== "resultado") pararRevelacao();
+    modo = modoAutomatico(d);
+    chaveDoModo = chaveEtapa(d);
+    gravarModo();
+    desenhado = "";
+  }
   desenhar();
 }
 
