@@ -10,9 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
+  <script>try{document.documentElement.dataset.tema=localStorage.getItem("tema")||"escuro"}catch(e){document.documentElement.dataset.tema="escuro"}</script>
 </head>
 <body>
   <!-- TELA INICIAL (boas-vindas) -->
+  <button type="button" class="botao-tema flutuante" id="btn-tema" aria-label="Trocar tema"></button>
   <main class="inicio">
     <div class="inicio-centro">
       <img id="logo" class="logo-completa" src="img/logo.png" alt="Igreja Cristã Presbiteriana Missionária">
