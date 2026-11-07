@@ -222,8 +222,8 @@ function telaCedula(cat) {
     <h2 class="titulo-etapa">${cat.label}</h2>
     <p class="texto-suave">${escolha
       ? `Toque no nome de <strong>um</strong> candidato para escolher o seu voto, ou vote em branco.`
-      : `Para cada nome, marque <strong style="color:var(--verde-700)">SIM</strong>,
-         <strong style="color:var(--vermelho-700)">NÃO</strong> ou <strong style="color:#4b5563">BRANCO</strong>.`}</p>
+      : `Para cada nome, marque <strong style="color:var(--sim-tx,var(--verde-700))">SIM</strong>,
+         <strong style="color:var(--nao-tx,var(--vermelho-700))">NÃO</strong> ou <strong style="color:var(--branco-tx,#4b5563)">BRANCO</strong>.`}</p>
 
     <div class="contador" aria-live="polite">
       <span class="${completo ? "completo" : ""}">${escolha
