@@ -587,7 +587,7 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     else if (estadoF === "futura") lista = `<p class="pequeno texto-suave">A lista será montada quando você avançar para esta etapa.</p>`;
     else lista = nomes.length
       ? `<ul class="pequeno" style="margin:8px 0 0;padding-left:18px">${nomes.map((x) => `<li>${esc(x.name)}</li>`).join("")}</ul>`
-      : `<p class="pequeno" style="color:var(--vermelho-700)">Nenhum candidato ainda — cadastre na aba Candidatos.</p>`;
+      : `<p class="pequeno" style="color:var(--nao-tx,var(--vermelho-700))">Nenhum candidato ainda — cadastre na aba Candidatos.</p>`;
     const resultado = f.n > 1 && estadoF !== "futura" && cargosTexto(f.n).length
       ? `<p class="pequeno" style="margin:8px 0 0"><strong>Resultado:</strong> ${cargosTexto(f.n).map(esc).join(" · ")}</p>` : "";
     const selo = estadoF === "concluida" ? '<span class="etiqueta eleito">Concluída</span>'
