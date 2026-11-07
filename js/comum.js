@@ -112,3 +112,30 @@ function baixarQR(texto, nomeArquivo = "qrcode-votacao.png") {
   };
   img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgQR(texto, "#000"));
 }
+
+// Botão "A+": aumenta a letra da página (3 tamanhos). Fica guardado no aparelho.
+const TAMANHOS_LETRA = [1, 1.2, 1.4];
+function aplicarLetra(n) {
+  const z = TAMANHOS_LETRA[n] || 1;
+  document.documentElement.style.setProperty("--zoom-letra", z);
+  const b = document.getElementById("btn-letra");
+  if (b) {
+    b.textContent = n === 0 ? "A+" : n === 1 ? "A++" : "A";
+    b.setAttribute("aria-label", n === 2 ? "Voltar a letra ao tamanho normal" : "Aumentar o tamanho da letra");
+    b.classList.toggle("ativo", n > 0);
+  }
+}
+(function iniciarBotaoLetra() {
+  let n = 0;
+  try { n = Number(localStorage.getItem("tamanho_letra")) || 0; } catch { /* ok */ }
+  const iniciar = () => {
+    if (!document.getElementById("btn-letra")) return;
+    aplicarLetra(n);
+    document.getElementById("btn-letra").addEventListener("click", () => {
+      n = (n + 1) % TAMANHOS_LETRA.length;
+      try { localStorage.setItem("tamanho_letra", n); } catch { /* ok */ }
+      aplicarLetra(n);
+    });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+})();
