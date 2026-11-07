@@ -230,12 +230,17 @@ function desenharCandidatos(msg = "") {
 let eleitores = [];
 const filtroEleitores = { busca: "", situacao: "todos", mostrarDoc: false };
 
+let modoCodigoLigado = false, nomeIgreja = "";
 async function abaEleitores(msg = "") {
-  const { ok, status, dados } = await chamar("voters");
-  if (sessaoExpirou(status)) return;
-  if (ok) eleitores = dados.list;
+  const [v, c] = await Promise.all([chamar("voters"), chamar("settings")]);
+  if (sessaoExpirou(v.status)) return;
+  if (v.ok) eleitores = v.dados.list;
+  if (c.ok) { modoCodigoLigado = !!c.dados.usar_codigo; nomeIgreja = c.dados.church_name || ""; }
   desenharEleitores(msg);
 }
+
+// eleitores que têm código (gerado aqui ou digitado), sem CPF
+const comCodigo = () => eleitores.filter((v) => !/^\d{11}$/.test(v.doc));
 
 function mascarar(doc) {
   return /^\d{11}$/.test(doc) ? `***.${doc.slice(3, 6)}.${doc.slice(6, 9)}-**` : doc;
@@ -252,6 +257,23 @@ function desenharEleitores(msg = "") {
       <div class="card numero"><div class="r">Faltam votar</div><div class="v">${eleitores.length - votaram}</div></div>
       <div class="card numero destaque"><div class="r">Participação</div><div class="v">${porcentagem(pct)}</div></div>
     </div>
+
+    <section class="card pad mt-g">
+      <div class="titulo-card" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        Códigos de votação
+        <span class="etiqueta ${modoCodigoLigado ? "eleito" : "neutra"}">${modoCodigoLigado ? "Ligado: os membros votam com código" : "Desligado (ligue em Configurações)"}</span>
+      </div>
+      <p class="pequeno texto-suave" style="margin-top:0">Gere um código para cada membro presente. Imprima os cartões (com QR Code)
+        ou copie a lista para mandar pelo WhatsApp. Entregue os cartões <strong>sem anotar quem recebeu qual</strong>:
+        assim nem a mesa sabe de quem é cada código, e o voto continua secreto.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input id="c-qtd" type="number" min="1" max="1000" class="campo" style="width:110px" value="50" aria-label="Quantidade de códigos">
+        <button type="button" class="btn btn-verde" id="c-gerar">Gerar códigos</button>
+        <button type="button" class="btn btn-contorno" id="c-imprimir" ${comCodigo().length ? "" : "disabled"}>Imprimir cartões (${comCodigo().length})</button>
+        <button type="button" class="btn btn-contorno" id="c-copiar" ${comCodigo().length ? "" : "disabled"}>Copiar lista</button>
+        <button type="button" class="link-btn vermelho pequeno" id="c-apagar">Apagar códigos gerados</button>
+      </div>
+    </section>
 
     <div class="grade-2 mt-g">
       <form id="form-um" class="card pad">
@@ -320,6 +342,27 @@ function desenharEleitores(msg = "") {
       for (let i = 0; i < 6; i++) cod += letras[Math.floor(Math.random() * letras.length)];
       return `${l};${cod}`;
     }).join("\n");
+  });
+
+  $("#c-gerar").addEventListener("click", async (e) => {
+    const qtd = Number($("#c-qtd").value);
+    if (!(qtd >= 1 && qtd <= 1000)) return alert("Informe de 1 a 1000 códigos.");
+    e.target.disabled = true;
+    const { ok, status, dados } = await chamar("codigos_gerar", { quantidade: qtd });
+    if (sessaoExpirou(status)) return;
+    abaEleitores(ok ? `${dados.codes.length} código(s) gerado(s). Agora imprima os cartões ou copie a lista.` : dados.error);
+  });
+  $("#c-imprimir").addEventListener("click", imprimirCartoes);
+  $("#c-copiar").addEventListener("click", async (e) => {
+    const texto = comCodigo().map((v) => v.doc).join("\n");
+    try { await navigator.clipboard.writeText(texto); e.target.textContent = "Lista copiada ✓"; }
+    catch { prompt("Copie a lista:", texto); }
+  });
+  $("#c-apagar").addEventListener("click", async () => {
+    if (prompt("Apagar TODOS os códigos gerados (Código 001, 002…)?\nOs eleitores com nome continuam.\n\nDigite APAGAR para confirmar:") !== "APAGAR") return;
+    const { ok, status, dados } = await chamar("codigos_apagar", { confirm: "APAGAR" });
+    if (sessaoExpirou(status)) return;
+    abaEleitores(ok ? `${dados.removed} código(s) apagado(s).` : dados.error);
   });
 
   $("#f-busca").addEventListener("input", (e) => { filtroEleitores.busca = e.target.value; desenharTabelaEleitores(); });
@@ -443,6 +486,13 @@ function desenharConfig(msg = "") {
           <span class="pequeno texto-suave">Desligado: o membro vai direto para a cédula (só bloqueia um 2º voto no mesmo aparelho).
           Ligado: só vota quem está na lista de Eleitores, uma única vez.</span></span>
       </label>
+      <label style="display:flex;gap:12px;align-items:flex-start;cursor:pointer;margin-top:18px">
+        <input id="g-cod" type="checkbox" style="width:22px;height:22px;margin-top:3px;accent-color:#e8792a" ${cfg.usar_codigo ? "checked" : ""}>
+        <span><strong>Votar com código de votação</strong><br>
+          <span class="pequeno texto-suave">Cada membro recebe um código (cartão impresso ou WhatsApp) e digita só o código —
+          sem nome nem CPF. Cada código vale <strong>um voto por etapa</strong>, em qualquer celular. Gere os códigos na aba
+          <strong>Eleitores</strong>. Ligado, substitui o "Pedir nome e CPF".</span></span>
+      </label>
       <div class="zona-perigo mt-g">
         <strong>Zerar votação</strong>
         <p class="pequeno" style="margin:4px 0 12px">Apaga todos os votos. Use para limpar os testes antes da eleição real.</p>
@@ -466,6 +516,7 @@ function desenharConfig(msg = "") {
     cfg.end_at = paraISO($("#g-fim").value);
     cfg.results_public = $("#g-pub").checked;
     cfg.require_id = $("#g-id").checked;
+    cfg.usar_codigo = $("#g-cod").checked;
   };
 
   $("#g-logo").addEventListener("change", async (e) => {
@@ -554,6 +605,26 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
       <strong>encerrada</strong>: confira os nomes e depois clique em "Abrir votação".</p>`;
   }
 
+  // quórum: quantos dos presentes já votaram nesta etapa
+  const presentes = s.presentes || 0;
+  const votosAgora = (res.fases || []).find((x) => x.n === atual)?.ballots || 0;
+  const pctQ = presentes ? (votosAgora / presentes) * 100 : 0;
+  const quorum = `<div class="quorum" style="border-top:1px solid var(--borda);padding-top:14px;margin-top:16px">
+      <label class="rotulo" for="q-pres">Membros presentes (quórum)</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="q-pres" type="number" min="0" class="campo" style="width:120px" value="${presentes || ""}" placeholder="Ex: 48">
+        <button class="btn btn-contorno btn-pequeno" id="q-salvar">Salvar</button>
+        <button class="link-btn verde pequeno" id="q-atualizar">Atualizar contagem</button>
+      </div>
+      ${presentes ? `<p style="margin:10px 0 0"><strong style="font-size:20px">${votosAgora} de ${presentes}</strong>
+        já votaram nesta etapa (${porcentagem(pctQ)})${votosAgora >= presentes ? " — todos votaram ✓" : ""}</p>
+        <div class="quorum-barra"><b style="width:${Math.min(100, pctQ).toFixed(1)}%"></b></div>`
+        : `<p class="pequeno texto-suave" style="margin:8px 0 0">Informe quantos membros com direito a voto estão presentes.
+        O painel e o telão mostram "X de ${"N"} já votaram", e o número entra na ata.</p>`}
+    </div>`;
+  const eleitosLib = !!s.eleitos_publicos;
+  const linkEleitos = new URL("eleitos.html", enderecoDoSite()).href;
+
   caixa.innerHTML = `
     ${msg ? `<div class="alerta ${tipoMsg}" style="margin-top:0;margin-bottom:16px">${esc(msg)}</div>` : ""}
     <section class="card pad" style="margin-bottom:20px">
@@ -565,6 +636,7 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
       </div>
       <p class="pequeno texto-suave" style="margin-bottom:0">Os membros usam sempre o mesmo link. Quando abrir uma etapa nova, avise no grupo
         para que todos abram o site de novo.</p>
+      ${quorum}
     </section>
     <section class="card pad" style="margin-bottom:20px">
       <div class="titulo-card">Telão, QR Code e Ata</div>
@@ -577,11 +649,44 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
         chegando e o QR Code; o resultado só aparece quando você clicar em "Mostrar resultado" (ou apertar a tecla R).
         <strong>Ata:</strong> gera o rascunho com os votos de todas as etapas, em Word ou PDF.</p>
     </section>
+    <section class="card pad" style="margin-bottom:20px">
+      <div class="titulo-card" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        Página pública dos eleitos
+        <span class="etiqueta ${eleitosLib ? "eleito" : "neutra"}">${eleitosLib ? "Liberada" : "Bloqueada"}</span></div>
+      <p class="pequeno texto-suave" style="margin-top:0">Uma página bonita com a nova liderança (foto e cargo) para mandar no grupo da igreja.
+        Mostra só nomes e cargos — nunca votos — e só das etapas já <strong>encerradas</strong>. Ninguém vê nada enquanto estiver bloqueada.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn ${eleitosLib ? "btn-contorno" : "btn-principal"}" id="el-liberar">${eleitosLib ? "Bloquear página" : "Liberar página"}</button>
+        <a class="btn btn-contorno" href="eleitos.html" target="_blank" rel="noopener">Abrir página</a>
+        <button class="btn btn-contorno" id="el-copiar">Copiar link</button>
+      </div>
+    </section>
     <div style="display:grid;gap:14px">${cartoes}</div>`;
 
   $$("[data-acao]", caixa).forEach((b) => b.addEventListener("click", () => acaoEtapa(b.dataset.acao, b)));
   $("#b-qrcode").addEventListener("click", abrirQRCode);
   $("#b-ata").addEventListener("click", abrirFormularioAta);
+  $("#q-salvar").addEventListener("click", async (e) => {
+    const n = Number($("#q-pres").value || 0);
+    if (!(n >= 0)) return;
+    e.target.disabled = true;
+    const { ok, status, dados } = await chamar("presentes_salvar", { presentes: n });
+    if (sessaoExpirou(status)) return;
+    abaEtapas(ok ? (n ? `Quórum salvo: ${n} membros presentes.` : "Quórum apagado.") : dados.error, ok ? "info" : "erro");
+  });
+  $("#q-atualizar").addEventListener("click", () => abaEtapas());
+  $("#el-liberar").addEventListener("click", async (e) => {
+    const liberar = !eleitosLib;
+    if (liberar && !confirm("Liberar a página pública dos eleitos? Qualquer pessoa com o link verá os eleitos das etapas encerradas.")) return;
+    e.target.disabled = true;
+    const { ok, status, dados } = await chamar("eleitos_liberar", { liberar });
+    if (sessaoExpirou(status)) return;
+    abaEtapas(ok ? (liberar ? "Página dos eleitos liberada. Copie o link e mande no grupo." : "Página dos eleitos bloqueada.") : dados.error, ok ? "info" : "erro");
+  });
+  $("#el-copiar").addEventListener("click", async (e) => {
+    try { await navigator.clipboard.writeText(linkEleitos); e.target.textContent = "Link copiado ✓"; }
+    catch { prompt("Copie o link:", linkEleitos); }
+  });
 }
 
 // QR Code grande para mostrar na tela, imprimir ou mandar no grupo
@@ -628,4 +733,52 @@ async function acaoEtapa(acao, botao) {
   };
   if (!ok) return abaEtapas(dados.error || "Não foi possível concluir.", "erro");
   abaEtapas(acao === "fase_avancar" ? `Etapa ${dados.fase} preparada. ${dados.aviso || ""} Confira os nomes e clique em "Abrir votação".` : mensagens[acao]);
+}
+
+// Cartões de código para imprimir e recortar (10 por folha A4), cada um com QR Code que já abre a cédula
+function imprimirCartoes() {
+  const lista = comCodigo();
+  if (!lista.length) return;
+  const janela = window.open("", "_blank");
+  if (!janela) return alert("O navegador bloqueou a nova janela. Permita pop-ups para este site.");
+  const base = new URL("votar.html", enderecoDoSite()).href;
+  const site = enderecoDoSite().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const igreja = nomeIgreja || "Eleição de Liderança";
+  const cartoes = lista.map((v) => {
+    const nome = /^Código \d+$/.test(v.name) ? "" : v.name;
+    return `<div class="cartao">
+      <div class="txt">
+        <div class="ig">${esc(igreja)}</div>
+        <div class="rot">Código de votação</div>
+        <div class="cod">${esc(v.doc)}</div>
+        ${nome ? `<div class="nome">${esc(nome)}</div>` : ""}
+        <div class="inst">Aponte a câmera para o QR Code<br>ou acesse <b>${esc(site)}</b> e digite o código.<br>
+          Vale <b>1 voto em cada etapa</b>. Não empreste.</div>
+      </div>
+      <div class="qr">${svgQR(base + "?codigo=" + encodeURIComponent(v.doc), "#000")}</div>
+    </div>`;
+  }).join("");
+  janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Cartões de votação</title>
+    <style>
+      @page { size: A4; margin: 10mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #111; }
+      .barra { padding: 12px; background: #22341a; color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+      .barra button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 8px 16px; background: #e8792a; color: #fff; cursor: pointer; }
+      .grade { display: grid; grid-template-columns: 1fr 1fr; }
+      .cartao { height: 55mm; border: 1px dashed #999; padding: 4mm 5mm; display: flex; gap: 4mm; align-items: center; break-inside: avoid; }
+      .txt { flex: 1; min-width: 0; }
+      .ig { font-size: 8pt; text-transform: uppercase; letter-spacing: .08em; color: #555; }
+      .rot { font-size: 9pt; font-weight: 700; margin-top: 2mm; color: #6f901b; text-transform: uppercase; }
+      .cod { font-family: "Courier New", monospace; font-size: 22pt; font-weight: 700; letter-spacing: .12em; margin: 1mm 0; }
+      .nome { font-size: 9pt; font-weight: 700; }
+      .inst { font-size: 7.5pt; line-height: 1.35; color: #333; margin-top: 1.5mm; }
+      .qr { width: 32mm; height: 32mm; flex: none; }
+      .qr svg { width: 100%; height: 100%; display: block; }
+      @media print { .barra { display: none; } }
+    </style></head><body>
+    <div class="barra"><span>${lista.length} cartões · recorte nas linhas tracejadas</span><button onclick="print()">Imprimir</button></div>
+    <div class="grade">${cartoes}</div>
+    <script>setTimeout(function () { print(); }, 600);<\/script></body></html>`);
+  janela.document.close();
 }
