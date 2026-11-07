@@ -71,7 +71,7 @@ function desenhar() {
 
   const votos = votosDaEtapa(d);
   if (modo === "contador") {
-    const assin = ["contador", d.fase, d.faseAberta, mostrarQR].join("|");
+    const assin = ["contador", d.fase, d.faseAberta, mostrarQR, d.settings?.presentes || 0].join("|");
     if (assin === desenhado) return atualizarNumero(votos);
     desenhado = assin;
     return desenharContador(d, votos);
@@ -91,6 +91,7 @@ function desenharContador(d, votos) {
         <span class="t-estado ${aberta ? "" : "fechada"}"><i></i>${aberta ? "Votação aberta" : "Votação encerrada"}</span>
         <div class="t-numero" id="t-numero" data-valor="${votos}">${votos}</div>
         <div class="t-legenda" id="t-legenda">${votos === 1 ? "voto registrado" : "votos registrados"}</div>
+        ${d.settings?.presentes ? `<div class="t-quorum" id="t-quorum">${quorumHtml(votos, d.settings.presentes)}</div>` : ""}
         <div class="t-sub">${aberta ? "O voto é secreto. Cada membro vota uma vez." : "Obrigado a todos que votaram. O resultado será apresentado em instantes."}</div>
       </div>
       ${qr ? `<div class="t-qr"><div class="qr">${svgQR(endereco)}</div>
@@ -106,7 +107,15 @@ function atualizarNumero(votos) {
   el.dataset.valor = votos;
   contarAte(el, antes, votos, 700);
   $("#t-legenda").textContent = votos === 1 ? "voto registrado" : "votos registrados";
+  if ($("#t-quorum")) $("#t-quorum").innerHTML = quorumHtml(votos, dados.settings.presentes);
   el.classList.remove("pulo"); void el.offsetWidth; el.classList.add("pulo");
+}
+
+// "de 48 presentes · 85%" com barra
+function quorumHtml(votos, presentes) {
+  const p = presentes ? Math.min(100, (votos / presentes) * 100) : 0;
+  return `<div class="t-qbarra"><b style="width:${p.toFixed(1)}%"></b></div>
+    <span>de <strong>${presentes}</strong> presentes · ${pct(p)}${votos >= presentes ? " · todos votaram" : ""}</span>`;
 }
 
 function contarAte(el, de, para, ms, formato = (n) => String(Math.round(n))) {
