@@ -500,6 +500,17 @@ function desenharConfig(msg = "") {
       </div>
     </section>
 
+    <section class="card pad">
+      <div class="titulo-card">Telão entre etapas</div>
+      <p class="pequeno texto-suave" style="margin-top:0">Enquanto a mesa prepara a próxima etapa, o telão mostra estas mensagens
+        (versículos ou avisos), trocando sozinho a cada 15 segundos. Separe uma mensagem da outra com <strong>uma linha em branco</strong>.
+        Para mostrar a referência embaixo, comece a última linha com um travessão: <code>— Salmos 133.1</code></p>
+      <textarea id="g-msg" class="campo" maxlength="3000" style="min-height:170px"
+        placeholder="Escreva aqui o versículo&#10;— Livro capítulo.versículo&#10;&#10;Aviso: após a assembleia haverá um lanche no salão.">${esc(cfg.telao_mensagens || "")}</textarea>
+      <p class="pequeno texto-suave">No telão, use o botão <strong>Mensagem</strong> (tecla M) para mostrar a qualquer momento.
+        Entre uma etapa e outra, elas aparecem sozinhas.</p>
+    </section>
+
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <button class="btn btn-principal">Salvar configurações</button>
       ${msg ? `<strong class="pequeno">${esc(msg)}</strong>` : ""}
@@ -517,6 +528,7 @@ function desenharConfig(msg = "") {
     cfg.results_public = $("#g-pub").checked;
     cfg.require_id = $("#g-id").checked;
     cfg.usar_codigo = $("#g-cod").checked;
+    cfg.telao_mensagens = $("#g-msg").value;
   };
 
   $("#g-logo").addEventListener("change", async (e) => {
