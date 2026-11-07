@@ -33,6 +33,8 @@ const COMPROVANTE = () => N() + 2;
   const { ok, dados } = await chamar("info");
   if (!ok) return aviso("Ops!", dados.error || "Não foi possível carregar. Verifique sua internet.");
   estado.info = dados;
+  // ordem aleatória dos nomes (cada aparelho vê uma ordem diferente; ninguém ganha por aparecer primeiro)
+  estado.info.candidates = embaralhar(dados.candidates);
   $("#selo").innerHTML = seloLogo(dados.logo_url, 42);
   $("#igreja").textContent = dados.church_name;
   $("#titulo").textContent = dados.fase > 1 ? `${dados.title} · ${dados.fase_label}` : dados.title;
@@ -68,6 +70,18 @@ function marcarAparelho() {
 function guardarCodigo(c) { try { localStorage.setItem("codigo_votacao", String(c).trim().toUpperCase()); } catch { /* ok */ } }
 function lerCodigo() { try { return localStorage.getItem("codigo_votacao") || ""; } catch { return ""; } }
 function esquecerCodigo() { try { localStorage.removeItem("codigo_votacao"); } catch { /* ok */ } }
+
+// embaralha (Fisher-Yates) com números aleatórios do próprio aparelho
+function embaralhar(lista) {
+  const v = lista.slice();
+  const rnd = new Uint32Array(v.length);
+  try { crypto.getRandomValues(rnd); } catch { for (let i = 0; i < v.length; i++) rnd[i] = Math.floor(Math.random() * 4294967296); }
+  for (let i = v.length - 1; i > 0; i--) {
+    const j = rnd[i] % (i + 1);
+    [v[i], v[j]] = [v[j], v[i]];
+  }
+  return v;
+}
 
 function candidatosDa(cat) {
   return estado.info.candidates.filter((c) => c.category === cat);
