@@ -562,6 +562,77 @@ function desenharConfig(msg = "") {
 // ================================================================
 // ABA ETAPAS (controle da votação em 4 etapas)
 // ================================================================
+// "32 de 48 já votaram" (bloco do quórum)
+function quorumInfo(votos, presentes) {
+  if (!presentes) return `<p class="pequeno texto-suave" style="margin:8px 0 0">Informe quantos membros com direito a voto estão presentes.
+    O painel e o telão mostram "X de N já votaram", e o número entra na ata.</p>`;
+  const pct = (votos / presentes) * 100;
+  return `<p style="margin:10px 0 0"><strong style="font-size:20px">${votos} de ${presentes}</strong>
+    já votaram nesta etapa (${porcentagem(pct)})${votos >= presentes ? " — todos votaram ✓" : ""}</p>
+    <div class="quorum-barra"><b style="width:${Math.min(100, pct).toFixed(1)}%"></b></div>`;
+}
+
+// Gráfico "votos por minuto" + dica para a mesa saber quando dá para encerrar
+function htmlRitmo(res, aberta, presentes, votos) {
+  const lista = res.ritmo?.minutos || [];
+  if (!lista.length) return `<p class="pequeno texto-suave" style="margin:8px 0 0">${aberta ? "Nenhum voto ainda nesta etapa. As barras aparecem conforme os votos chegam." : "Sem votos registrados nesta etapa."}</p>`;
+  const porMin = new Map(lista);
+  const agoraMin = Math.floor((res.ritmo.agora || Date.now()) / 60000);
+  const primeiro = lista[0][0], ultimo = lista[lista.length - 1][0];
+  const fim = aberta ? Math.max(agoraMin, ultimo) : ultimo;
+  const ini = Math.min(Math.max(primeiro - 1, fim - 29), fim - 9); // até 30 minutos na tela (no mínimo 10)
+  const barras = [];
+  for (let m = ini; m <= fim; m++) barras.push([m, porMin.get(m) || 0]);
+  const max = Math.max(1, ...barras.map((b) => b[1]));
+  const W = 600, H = 150, base = 122, topo = 14, lb = W / barras.length;
+  const hora = (m) => new Date(m * 60000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const svg = barras.map(([m, n], i) => {
+    const h = n ? Math.max(3, ((base - topo) * n) / max) : 0;
+    const x = i * lb + lb * 0.15, w = lb * 0.7;
+    const cor = aberta && m === agoraMin ? "var(--laranja-500)" : "var(--verde-600)";
+    return (h ? `<rect x="${x.toFixed(1)}" y="${(base - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${cor}"><title>${hora(m)}: ${n} voto${n === 1 ? "" : "s"}</title></rect>` : "")
+      + (n && barras.length <= 20 ? `<text x="${(x + w / 2).toFixed(1)}" y="${(base - h - 4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${n}</text>` : "");
+  }).join("");
+  const marcas = [0, Math.floor((barras.length - 1) / 2), barras.length - 1].map((i) =>
+    `<text x="${(i * lb + lb / 2).toFixed(1)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === barras.length - 1 ? "end" : "middle"}" font-size="12" fill="currentColor" opacity=".65">${hora(barras[i][0])}</text>`).join("");
+  // números do ritmo
+  const ult5 = lista.filter(([m]) => m > agoraMin - 5).reduce((s, x) => s + x[1], 0);
+  const semVotoHa = agoraMin - ultimo;
+  const pico = lista.reduce((a, b) => (b[1] > a[1] ? b : a));
+  let dica = "";
+  if (aberta) {
+    if (presentes && votos >= presentes) dica = `<div class="alerta info" style="margin-top:10px">✓ Todos os ${presentes} presentes já votaram. Pode encerrar a etapa.</div>`;
+    else if (semVotoHa >= 3) dica = `<div class="alerta aviso" style="margin-top:10px">Nenhum voto há ${semVotoHa} minutos.
+      ${presentes ? `Ainda faltam ${presentes - votos} dos ${presentes} presentes: avise quem não votou ou, se eles não forem votar, pode encerrar a etapa.`
+        : "Se todos já votaram, pode encerrar a etapa."}</div>`;
+    else if (ult5) dica = `<p class="pequeno" style="margin:10px 0 0">Ainda estão chegando votos — aguarde mais um pouco.</p>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Votos por minuto" style="display:block;margin-top:8px;color:inherit">
+      <line x1="0" x2="${W}" y1="${base + 0.5}" y2="${base + 0.5}" stroke="currentColor" stroke-opacity=".2"/>${svg}${marcas}</svg>
+    <div class="pequeno" style="display:flex;gap:18px;flex-wrap:wrap;margin-top:4px">
+      <span><strong>${ult5}</strong> nos últimos 5 min</span>
+      <span>último voto: <strong>${semVotoHa <= 0 ? "agora" : `há ${semVotoHa} min`}</strong></span>
+      <span>pico: <strong>${pico[1]}</strong> às ${hora(pico[0])}</span>
+    </div>${dica}`;
+}
+
+// enquanto a aba Etapas estiver aberta e a votação rolando, atualiza gráfico e quórum sozinho
+let timerRitmo = null;
+function vigiarRitmo(aberta, fase, presentes) {
+  clearInterval(timerRitmo);
+  if (!aberta) return;
+  timerRitmo = setInterval(async () => {
+    if (!$("#ritmo") || $("#aba-etapas").classList.contains("oculto")) return clearInterval(timerRitmo);
+    if (document.visibilityState !== "visible") return;
+    const { ok, dados } = await chamar("results");
+    if (!ok || !$("#ritmo")) return;
+    if (dados.fase !== fase || !dados.faseAberta) return abaEtapas(); // mudou a etapa: redesenha tudo
+    const votos = (dados.fases || []).find((x) => x.n === fase)?.ballots || 0;
+    $("#ritmo").innerHTML = htmlRitmo(dados, true, presentes, votos);
+    if ($("#q-info")) $("#q-info").innerHTML = quorumInfo(votos, presentes);
+  }, 15000);
+}
+
 async function abaEtapas(msg = "", tipoMsg = "info") {
   const caixa = $("#aba-etapas");
   if (!caixa.innerHTML) caixa.innerHTML = '<p class="texto-suave">Carregando…</p>';
@@ -628,11 +699,14 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
         <button class="btn btn-contorno btn-pequeno" id="q-salvar">Salvar</button>
         <button class="link-btn verde pequeno" id="q-atualizar">Atualizar contagem</button>
       </div>
-      ${presentes ? `<p style="margin:10px 0 0"><strong style="font-size:20px">${votosAgora} de ${presentes}</strong>
-        já votaram nesta etapa (${porcentagem(pctQ)})${votosAgora >= presentes ? " — todos votaram ✓" : ""}</p>
-        <div class="quorum-barra"><b style="width:${Math.min(100, pctQ).toFixed(1)}%"></b></div>`
-        : `<p class="pequeno texto-suave" style="margin:8px 0 0">Informe quantos membros com direito a voto estão presentes.
-        O painel e o telão mostram "X de ${"N"} já votaram", e o número entra na ata.</p>`}
+      <div id="q-info">${quorumInfo(votosAgora, presentes)}</div>
+    </div>
+    <div style="border-top:1px solid var(--borda);padding-top:14px;margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span class="rotulo" style="margin:0">Votos chegando por minuto</span>
+        <span class="pequeno texto-suave">${aberta ? "atualiza sozinho a cada 15 segundos" : "etapa encerrada"}</span>
+      </div>
+      <div id="ritmo">${htmlRitmo(res, aberta, presentes, votosAgora)}</div>
     </div>`;
   const eleitosLib = !!s.eleitos_publicos;
   const linkEleitos = new URL("eleitos.html", enderecoDoSite()).href;
@@ -658,7 +732,7 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
         <button class="btn btn-contorno" id="b-ata">Gerar ata da assembleia</button>
       </div>
       <p class="pequeno texto-suave" style="margin-bottom:0"><strong>Telão:</strong> abra neste computador e projete. Mostra os votos
-        chegando e o QR Code; o resultado só aparece quando você clicar em "Mostrar resultado" (ou apertar a tecla R).
+        chegando e o QR Code, e muda sozinho: ao encerrar a etapa mostra o resultado (com suspense) e, ao abrir a próxima, volta ao QR Code.
         <strong>Ata:</strong> gera o rascunho com os votos de todas as etapas, em Word ou PDF.</p>
     </section>
     <section class="card pad" style="margin-bottom:20px">
@@ -687,6 +761,7 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     abaEtapas(ok ? (n ? `Quórum salvo: ${n} membros presentes.` : "Quórum apagado.") : dados.error, ok ? "info" : "erro");
   });
   $("#q-atualizar").addEventListener("click", () => abaEtapas());
+  vigiarRitmo(aberta, atual, presentes);
   $("#el-liberar").addEventListener("click", async (e) => {
     const liberar = !eleitosLib;
     if (liberar && !confirm("Liberar a página pública dos eleitos? Qualquer pessoa com o link verá os eleitos das etapas encerradas.")) return;
