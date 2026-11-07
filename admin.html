@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
+  <script>try{document.documentElement.dataset.tema=localStorage.getItem("tema")||"escuro"}catch(e){document.documentElement.dataset.tema="escuro"}</script>
 </head>
 <body>
   <!-- ===== TELA DE LOGIN ===== -->
@@ -42,6 +43,7 @@
           <div class="titulo">Eleição de Liderança</div>
         </div>
         <div class="acoes">
+          <button type="button" class="botao-tema" id="btn-tema" aria-label="Trocar tema"></button>
           <a href="index.html" target="_blank">Ver site</a>
           <button id="sair" class="btn btn-pequeno" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.35)">Sair</button>
         </div>
