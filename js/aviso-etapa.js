@@ -46,6 +46,7 @@ async function verificarEtapa() {
   if (avisoDisparado) return;
   if (document.visibilityState === "hidden") return; // volta a verificar quando a tela voltar
   const { ok, dados } = await chamar("info");
+  if (ok && typeof guardarInfo === "function") guardarInfo(dados); // a cédula já abre na hora
   const status = document.getElementById("vigia-status");
   if (ok && dados.status === "open" && !aparelhoJaVotou(dados)) return dispararAviso(dados);
   if (status) {

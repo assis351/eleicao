@@ -29,12 +29,26 @@ const REVISAO = () => N() + 1;
 const COMPROVANTE = () => N() + 2;
 
 // ---------- carregamento ----------
+// Abre na hora com os dados guardados no aparelho (se forem recentes) e confere com o servidor.
+// Se algo mudou (etapa, candidatos, votação aberta/fechada), redesenha com os dados novos.
 (async function iniciar() {
+  const guardada = lerInfoGuardada(5 * 60000);
+  if (guardada) aplicarInfo(guardada);
   const { ok, dados } = await chamarComFila("info", {}, { limiteMs: 60000 });
-  if (!ok) return aviso("Ops!", dados.error || "Não foi possível carregar. Verifique sua internet.");
-  estado.info = dados;
+  if (!ok) {
+    if (!guardada) aviso("Ops!", dados.error || "Não foi possível carregar. Verifique sua internet.");
+    return;
+  }
+  guardarInfo(dados);
+  if (guardada && JSON.stringify(guardada) === JSON.stringify(dados)) return; // nada mudou
+  if (estado.enviando || (estado.info && estado.etapa === COMPROVANTE())) return;
+  Object.assign(estado, { etapa: 0, respostas: {}, erro: "", jaVotou: false, modoCodigo: false, autoConferir: false });
+  aplicarInfo(dados);
+})();
+
+function aplicarInfo(dados) {
   // ordem aleatória dos nomes (cada aparelho vê uma ordem diferente; ninguém ganha por aparecer primeiro)
-  estado.info.candidates = embaralhar(dados.candidates);
+  estado.info = { ...dados, candidates: embaralhar(dados.candidates || []) };
   $("#selo").innerHTML = seloLogo(dados.logo_url, 42);
   $("#igreja").textContent = dados.church_name;
   $("#titulo").textContent = dados.fase > 1 ? `${dados.title} · ${dados.fase_label}` : dados.title;
@@ -53,7 +67,7 @@ const COMPROVANTE = () => N() + 2;
     estado.etapa = 1;
   }
   desenhar();
-})();
+}
 
 // cada etapa tem a sua "marca" de já votou (a 1ª mantém a chave antiga)
 function chaveAparelho() {

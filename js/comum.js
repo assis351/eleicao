@@ -189,3 +189,18 @@ async function chamarComFila(acao, dados = {}, { limiteMs = 240000, aoEsperar } 
     await new Promise((ok) => setTimeout(ok, 1500 + Math.random() * 2500 + Math.min(tentativa, 6) * 400));
   }
 }
+
+// ---------- Abertura rápida ----------
+// Guarda neste aparelho os dados da votação (título, etapa, candidatos). Na próxima vez
+// o site já aparece na hora com eles e, em segundo plano, confere se algo mudou.
+function guardarInfo(d) {
+  try { localStorage.setItem("info_cache", JSON.stringify({ em: Date.now(), d })); } catch { /* sem armazenamento */ }
+}
+function lerInfoGuardada(idadeMaxMs) {
+  try {
+    const x = JSON.parse(localStorage.getItem("info_cache") || "null");
+    if (!x || !x.d || Date.now() - x.em > idadeMaxMs) return null;
+    if (typeof API_URL !== "undefined" && x.d._api && x.d._api !== API_URL) return null;
+    return x.d;
+  } catch { return null; }
+}
