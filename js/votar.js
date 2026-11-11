@@ -30,7 +30,7 @@ const COMPROVANTE = () => N() + 2;
 
 // ---------- carregamento ----------
 (async function iniciar() {
-  const { ok, dados } = await chamar("info");
+  const { ok, dados } = await chamarComFila("info", {}, { limiteMs: 60000 });
   if (!ok) return aviso("Ops!", dados.error || "Não foi possível carregar. Verifique sua internet.");
   estado.info = dados;
   // ordem aleatória dos nomes (cada aparelho vê uma ordem diferente; ninguém ganha por aparecer primeiro)
@@ -156,7 +156,7 @@ function telaCodigo() {
   const conferir = async () => {
     estado.erro = ""; estado.jaVotou = false; estado.enviando = true;
     desenhar();
-    const { ok, dados } = await chamar("check", { doc: estado.doc });
+    const { ok, dados } = await chamarComFila("check", { doc: estado.doc }, { limiteMs: 120000 });
     estado.enviando = false;
     if (!ok) {
       estado.erro = dados.error || "Erro inesperado.";
@@ -207,7 +207,7 @@ function telaIdentificacao() {
     estado.doc = $("#doc").value.trim();
     estado.erro = ""; estado.jaVotou = false; estado.enviando = true;
     desenhar();
-    const { ok, dados } = await chamar("check", { name: estado.nome, doc: estado.doc });
+    const { ok, dados } = await chamarComFila("check", { name: estado.nome, doc: estado.doc }, { limiteMs: 120000 });
     estado.enviando = false;
     if (!ok) {
       estado.erro = dados.error || "Erro inesperado.";
@@ -381,13 +381,8 @@ async function confirmar() {
     const v = estado.respostas[c.id];
     answers[c.id] = v === true || v === "branco" ? v : false;
   }
-  // se muita gente votar no mesmo segundo, o Google pede para esperar: tenta de novo sozinho
-  let resp;
-  for (let tentativa = 1; tentativa <= 4; tentativa++) {
-    resp = await chamar("vote", { name: estado.nome, doc: estado.doc, answers });
-    if (resp.ok || !resp.dados.busy) break;
-    await new Promise((r) => setTimeout(r, 2000 * tentativa));
-  }
+  // se muita gente votar no mesmo segundo, o voto entra numa fila e é enviado sozinho, sem perder nada
+  const resp = await chamarComFila("vote", { name: estado.nome, doc: estado.doc, answers }, { aoEsperar: avisarFila });
   const { ok, dados } = resp;
   estado.enviando = false;
   if (!ok) {
@@ -395,9 +390,24 @@ async function confirmar() {
     if (dados.alreadyVoted) estado.jaVotou = true;
     return desenhar();
   }
-  estado.comprovante = { protocolo: dados.protocol, em: dados.at };
+  estado.comprovante = { protocolo: dados.protocol || "confirmado", em: dados.at || new Date().toISOString() };
   marcarAparelho();
   irPara(COMPROVANTE());
+}
+
+// mostra na tela que o voto está na fila (muita gente votando ao mesmo tempo)
+function avisarFila(tentativa, ms) {
+  const b = $("#confirmar");
+  if (b) b.textContent = "Na fila… aguarde";
+  let aviso = $("#aviso-fila");
+  if (!aviso) {
+    aviso = document.createElement("div");
+    aviso.id = "aviso-fila"; aviso.className = "alerta aviso"; aviso.setAttribute("role", "status");
+    ($(".linha-botoes") || app).insertAdjacentElement("beforebegin", aviso);
+  }
+  const s = Math.round(ms / 1000);
+  aviso.innerHTML = `<strong>Muita gente votando agora.</strong> Seu voto está na fila e será enviado sozinho —
+    <strong>não feche esta tela</strong>.${s >= 20 ? ` (${s} s)` : ""}${tentativa >= 25 ? "<br>Se demorar muito, confira a internet do celular." : ""}`;
 }
 
 // ---------- comprovante ----------
