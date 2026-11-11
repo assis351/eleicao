@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap");
 /* ================================================================
    ESTILO DO SISTEMA DE VOTAÇÃO
    Cores tiradas da logo da Igreja Cristã Presbiteriana Missionária.
@@ -476,3 +477,185 @@ main.conteudo { zoom: var(--zoom-letra, 1); }
   border-color: rgba(34, 52, 26, .2); }
 [data-tema="escuro"] .botao-tema.flutuante { background: rgba(255, 255, 255, .08); color: var(--texto); border-color: rgba(255, 255, 255, .2); }
 [data-tema="escuro"] .topo .acoes a:not(.btn) { color: var(--laranja-300); }
+
+/* ================================================================
+   VISUAL 2026 — acabamento mais elegante (só no site, votação e painel;
+   telão, página dos eleitos, resultados públicos e impressões não mudam)
+   ================================================================ */
+:root[data-tema] {
+  --fonte-titulo: "Fraunces", Georgia, "Times New Roman", serif;
+  --raio: 20px;
+  --dourado: #f2c27b;
+  --brilho-verde: rgba(111, 144, 27, .16);
+  --brilho-laranja: rgba(232, 121, 42, .13);
+  --borda-forte: rgba(34, 52, 26, .16);
+  --vidro: rgba(255, 255, 255, .72);
+}
+:root[data-tema="escuro"] {
+  --brilho-verde: rgba(111, 144, 27, .22);
+  --brilho-laranja: rgba(232, 121, 42, .16);
+  --borda-forte: rgba(255, 255, 255, .14);
+  --vidro: rgba(23, 33, 18, .72);
+}
+
+/* fundo com brilhos suaves verde e laranja */
+[data-tema] body {
+  background:
+    radial-gradient(900px 520px at -10% -10%, var(--brilho-verde), transparent 60%),
+    radial-gradient(800px 520px at 110% 110%, var(--brilho-laranja), transparent 60%),
+    var(--fundo);
+  background-attachment: fixed;
+}
+
+/* títulos com letra serifada */
+[data-tema] .inicio-centro h1,
+[data-tema] .titulo-etapa,
+[data-tema] .revisao-bloco h3,
+[data-tema] .confirmado h2,
+[data-tema] .titulo-card,
+[data-tema] .categoria-res > header h2,
+[data-tema] .aviso-etapa-caixa h2,
+[data-tema] .login-tela h1,
+[data-tema] .topo .titulo {
+  font-family: var(--fonte-titulo); font-weight: 700; letter-spacing: -.01em;
+}
+[data-tema] .titulo-etapa { font-size: clamp(32px, 7vw, 42px); }
+[data-tema] .titulo-card { font-size: 22px; }
+
+/* cabeçalho: vidro escuro com a faixa da logo */
+[data-tema] .topo {
+  position: relative; z-index: 30;
+  background: linear-gradient(180deg, rgba(34, 52, 26, .96), rgba(28, 44, 21, .94));
+  backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .06), 0 10px 30px -12px rgba(0, 0, 0, .45);
+}
+[data-tema="escuro"] .topo { background: linear-gradient(180deg, rgba(26, 40, 19, .92), rgba(18, 28, 13, .9)); }
+[data-tema] .topo .titulo { font-size: 20px; }
+[data-tema] .topo .igreja { color: var(--dourado); letter-spacing: .16em; }
+[data-tema] .faixa { height: 3px; background: linear-gradient(90deg, var(--verde-600), #a3c13a 45%, var(--laranja-500)); }
+[data-tema] .selo-logo { box-shadow: 0 0 0 2px var(--laranja-500), 0 0 0 5px rgba(232, 121, 42, .18); }
+/* no celular o nome da igreja cabe numa linha só */
+[data-tema] .topo-conteudo > div:not(.acoes) { min-width: 0; }
+@media (max-width: 560px) {
+  [data-tema] .topo .igreja { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; }
+  [data-tema] .topo .titulo { font-size: 18px; line-height: 1.2; }
+}
+[data-tema] .contador { border-radius: 0 0 14px 14px; }
+
+/* cartões: cantos maiores, borda luminosa no topo */
+[data-tema] .card {
+  border-radius: var(--raio); border-color: var(--borda);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, .04), transparent 40%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), var(--sombra);
+}
+[data-tema="claro"] .card, :root[data-tema]:not([data-tema="escuro"]) .card { background-image: none; }
+
+/* botões */
+[data-tema] .btn { border-radius: 14px; letter-spacing: .01em; position: relative; overflow: hidden; }
+[data-tema] .btn-principal {
+  background: linear-gradient(135deg, #f08a3a, var(--laranja-600) 60%, #a14810);
+  box-shadow: 0 8px 22px -6px rgba(232, 121, 42, .55), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+[data-tema] .btn-principal:hover:not(:disabled) { background: linear-gradient(135deg, #f59a4f, #c95f17 60%, #ad4f12); transform: translateY(-1px); }
+[data-tema] .btn-principal::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, .28) 50%, transparent 70%);
+  transform: translateX(-120%); animation: brilho-btn 4.5s ease-in-out 1.2s infinite;
+}
+@keyframes brilho-btn { 0%, 70% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+[data-tema] .btn-verde {
+  background: linear-gradient(135deg, #4b6e1c, var(--verde-800));
+  box-shadow: 0 8px 20px -8px rgba(85, 107, 24, .6), inset 0 1px 0 rgba(255, 255, 255, .15);
+}
+[data-tema="escuro"] .btn-verde { background: linear-gradient(135deg, #5d8222, #34501f); }
+[data-tema] .btn-verde:hover:not(:disabled) { filter: brightness(1.1); }
+[data-tema] .campo { border-radius: 14px; }
+
+/* página inicial */
+[data-tema] .inicio { background: transparent; }
+[data-tema] .inicio::before { width: 520px; height: 520px; background: var(--brilho-verde); filter: blur(90px); animation: flutua 14s ease-in-out infinite; }
+[data-tema] .inicio::after { width: 520px; height: 520px; background: var(--brilho-laranja); filter: blur(90px); animation: flutua 16s ease-in-out infinite reverse; }
+@keyframes flutua { 50% { transform: translate(40px, 30px) scale(1.08); } }
+[data-tema] .inicio-centro .logo-completa { animation: entra-logo .8s cubic-bezier(.2, .8, .2, 1) both; }
+[data-tema="escuro"] .logo-completa { box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 18px 50px -10px rgba(0, 0, 0, .6), 0 0 80px -20px rgba(232, 121, 42, .45); }
+[data-tema] .inicio-centro h1 { font-size: clamp(36px, 9vw, 50px); }
+[data-tema="escuro"] .inicio-centro h1 {
+  background: linear-gradient(180deg, #fbfcf6 30%, #cfe08f); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+[data-tema] .inicio-centro > * { animation: sobe .7s cubic-bezier(.2, .8, .2, 1) both; }
+[data-tema] .inicio-centro > :nth-child(2) { animation-delay: .1s; }
+[data-tema] .inicio-centro > :nth-child(3) { animation-delay: .16s; }
+[data-tema] .inicio-centro > :nth-child(4) { animation-delay: .22s; }
+[data-tema] .inicio-centro > :nth-child(n+5) { animation-delay: .3s; }
+[data-tema] .caixa-status { border: 1px solid var(--borda); }
+@keyframes entra-logo { from { opacity: 0; transform: translateY(10px) scale(.94); } }
+@keyframes sobe { from { opacity: 0; transform: translateY(14px); } }
+
+/* cédula */
+[data-tema] .progresso .barra { height: 7px; }
+[data-tema] .progresso li.feito .barra { background: linear-gradient(90deg, #f59a4f, var(--laranja-500)); box-shadow: 0 0 12px rgba(232, 121, 42, .45); }
+[data-tema] .lista-candidatos > li { animation: sobe .45s cubic-bezier(.2, .8, .2, 1) both; }
+[data-tema] .lista-candidatos > li:nth-child(2) { animation-delay: .05s; }
+[data-tema] .lista-candidatos > li:nth-child(3) { animation-delay: .1s; }
+[data-tema] .lista-candidatos > li:nth-child(4) { animation-delay: .15s; }
+[data-tema] .lista-candidatos > li:nth-child(n+5) { animation-delay: .2s; }
+[data-tema] .candidato { position: relative; overflow: hidden; transition: border-color .2s, box-shadow .2s, transform .2s; }
+[data-tema] .candidato::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: transparent; transition: background .2s;
+}
+[data-tema] .candidato.marcado-sim::before { background: linear-gradient(180deg, #a3c13a, var(--verde-700)); }
+[data-tema] .candidato.marcado-nao::before { background: linear-gradient(180deg, #f87171, var(--vermelho-700)); }
+[data-tema] .candidato.marcado-branco::before { background: #9ca3af; }
+[data-tema] .candidato.marcado-sim { box-shadow: 0 0 0 3px rgba(111, 144, 27, .28), 0 12px 30px -14px rgba(111, 144, 27, .6); }
+[data-tema] .candidato.marcado-nao { box-shadow: 0 0 0 3px rgba(248, 113, 113, .28), 0 12px 30px -14px rgba(239, 68, 68, .5); }
+[data-tema] .avatar { box-shadow: 0 0 0 2px var(--laranja-500), 0 0 0 5px rgba(232, 121, 42, .15); }
+[data-tema] .botao-voto { border-radius: 14px; letter-spacing: .03em; transition: background .15s, color .15s, transform .12s, box-shadow .2s; }
+[data-tema] .botao-voto:active { transform: scale(.97); }
+[data-tema] .botao-voto.ativo { animation: marca .28s cubic-bezier(.3, 1.6, .5, 1); }
+[data-tema] .botao-voto.sim.ativo { background: linear-gradient(135deg, #7da12a, var(--verde-700)); box-shadow: 0 8px 18px -8px rgba(111, 144, 27, .8); }
+[data-tema] .botao-voto.nao.ativo { background: linear-gradient(135deg, #e04848, var(--vermelho-700)); box-shadow: 0 8px 18px -8px rgba(220, 38, 38, .7); }
+[data-tema] .botao-voto.branco.ativo { background: linear-gradient(135deg, #7b8492, #4b5563); }
+@keyframes marca { 0% { transform: scale(.94); } 100% { transform: scale(1); } }
+[data-tema] .contador span.completo { background: linear-gradient(135deg, #7da12a, var(--verde-700)); }
+
+/* revisão e comprovante */
+[data-tema] .revisao-bloco { animation: sobe .45s cubic-bezier(.2, .8, .2, 1) both; }
+[data-tema] .confirmado .check {
+  width: 96px; height: 96px; font-size: 48px;
+  background: radial-gradient(circle at 30% 25%, #9cc23a, var(--verde-700) 70%);
+  box-shadow: 0 0 0 8px rgba(111, 144, 27, .18), 0 0 0 18px rgba(111, 144, 27, .08), 0 18px 40px -10px rgba(111, 144, 27, .7);
+  animation: aparece-check .6s cubic-bezier(.3, 1.5, .5, 1) both;
+}
+@keyframes aparece-check { from { opacity: 0; transform: scale(.4) rotate(-20deg); } }
+[data-tema] .comprovante { border: 1.5px dashed rgba(232, 121, 42, .45); position: relative; }
+[data-tema] .comprovante .rotulo-c { color: var(--laranja-500); }
+
+/* painel */
+[data-tema] .abas { gap: 6px; padding-bottom: 0; }
+[data-tema] .abas button { border-radius: 12px 12px 0 0; position: relative; transition: background .15s, color .15s; }
+[data-tema] .abas button.ativa::after {
+  content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 3px; border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, var(--verde-600), var(--laranja-500));
+}
+[data-tema] .numero .v { font-family: var(--fonte-titulo); font-size: 42px; }
+[data-tema] .numero.destaque { background: linear-gradient(135deg, #2c4520, var(--verde-900)); }
+[data-tema] .categoria-res > header { background: linear-gradient(135deg, #2f4a22, var(--verde-900)); border-bottom: 2px solid rgba(232, 121, 42, .55); }
+[data-tema="escuro"] .categoria-res > header { background: linear-gradient(135deg, #2a4220, #182612); }
+[data-tema] .ranking li { transition: background .2s; }
+[data-tema] .ranking li.eleito { box-shadow: inset 3px 0 0 var(--verde-600), inset 0 0 0 1px rgba(111, 144, 27, .35); }
+[data-tema] .barra-sn .s { background: linear-gradient(90deg, #8db32c, var(--verde-700)); }
+[data-tema] .barra-sn .n { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+[data-tema] .tabela tbody tr { transition: background .15s; }
+[data-tema] .tabela tbody tr:hover td { background: rgba(232, 121, 42, .06); }
+[data-tema] .login-tela { background: radial-gradient(ellipse at 30% 0%, #34501f, #141f0c 70%); }
+[data-tema] .login-tela form { animation: sobe .6s cubic-bezier(.2, .8, .2, 1) both; border-top: 4px solid var(--laranja-500); }
+[data-tema] .modal, [data-tema] .aviso-etapa-caixa { border-radius: 24px; }
+
+/* quem prefere menos movimento no aparelho não vê animações */
+@media (prefers-reduced-motion: reduce) {
+  [data-tema] *, [data-tema] *::before, [data-tema] *::after { animation: none !important; transition: none !important; }
+}
+@media print {
+  [data-tema] body { background: #fff; }
+  [data-tema] .topo { position: static; }
+}
