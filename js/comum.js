@@ -169,3 +169,23 @@ function aplicarTema(t) {
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
 })();
+
+// Chamada "paciente": quando muita gente usa ao mesmo tempo, o Google recusa algumas conexões
+// (limite de execuções simultâneas) ou responde "ocupado". Aqui tenta de novo sozinho, com pausas
+// um pouco diferentes em cada celular, para a fila andar. aoEsperar(tentativa, msDecorridos) atualiza a tela.
+async function chamarComFila(acao, dados = {}, { limiteMs = 240000, aoEsperar } = {}) {
+  const ini = Date.now();
+  let incerto = false, tentativa = 0, r;
+  for (;;) {
+    tentativa++;
+    r = await chamar(acao, dados);
+    if (r.ok) return r;
+    // o voto pode ter sido gravado numa tentativa cuja resposta se perdeu: "já votou" aí quer dizer que entrou
+    if (acao === "vote" && r.dados.alreadyVoted && incerto) return { ok: true, status: 200, dados: { jaRegistrado: true } };
+    const repetir = r.status === 0 || r.dados.busy;
+    if (!repetir || Date.now() - ini > limiteMs) return r;
+    if (r.status === 0) incerto = true;
+    if (aoEsperar) aoEsperar(tentativa, Date.now() - ini);
+    await new Promise((ok) => setTimeout(ok, 1500 + Math.random() * 2500 + Math.min(tentativa, 6) * 400));
+  }
+}
