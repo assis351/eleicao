@@ -178,7 +178,7 @@ function desenharCandidatos(msg = "") {
         </div>
       </div>
       ${CATEGORIAS.find((c) => c.key === f.category)?.cargo ? `<p class="pequeno texto-suave" style="margin-top:-6px">
-        Cargo (etapa ${CATEGORIAS.find((c) => c.key === f.category).fase}): cadastre <strong>um nome só</strong> — o indicado. Para trocar, clique em "Editar" no nome atual.</p>` : ""}
+        Cargo (etapa ${CATEGORIAS.find((c) => c.key === f.category).fase}): cadastre o indicado. Com <strong>dois ou mais nomes</strong> no mesmo cargo vira disputa (SIM/NÃO em cada; fica quem tiver mais SIM acima do %). Para retirar, use "Excluir" no nome.</p>` : ""}
       <div class="grupo"><label class="rotulo" for="c-nome">Nome</label>
         <input id="c-nome" class="campo" required value="${esc(f.name)}" placeholder="Ex: Diac. João Silva"></div>
       <div class="grupo"><label class="rotulo" for="c-desc">Breve descrição</label>
@@ -697,7 +697,7 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     const itens = variosCargos
       ? CATEGORIAS.filter((k) => k.fase === f.n).map((k) => {
           const ns = nomes.filter((x) => x.category === k.key);
-          return `<li><strong>${esc(k.singular)}:</strong> ${ns.length ? ns.map((x) => esc(x.name)).join(" / ") : '<span style="color:var(--nao-tx,var(--vermelho-700))">sem indicado</span>'}${ns.length > 1 ? ' <span style="color:var(--nao-tx,var(--vermelho-700))">(deixe só um)</span>' : ""}</li>`;
+          return `<li><strong>${esc(k.singular)}:</strong> ${ns.length ? ns.map((x) => esc(x.name)).join(" / ") : '<span style="color:var(--nao-tx,var(--vermelho-700))">sem indicado</span>'}${ns.length > 1 ? ' <span class="texto-suave">(disputa)</span>' : ""}</li>`;
         })
       : nomes.map((x) => `<li>${esc(x.name)}</li>`);
     const lista = nomes.length || variosCargos

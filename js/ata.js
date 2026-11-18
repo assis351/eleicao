@@ -194,7 +194,7 @@ async function montarAta(a) {
       partes.push(tabela(["Cargo", "Indicado", "SIM", "NÃO", "BRANCO", "% SIM", "Resultado"], linhas));
       const juntarE = (l) => l.length <= 1 ? l.join("") : l.slice(0, -1).join("; ") + "; e " + l[l.length - 1];
       partes.push(`<p>${eleitos.length ? `${eleitos.length > 1 ? "Foram eleitos" : "Foi eleito"} ${juntarE(eleitos)}.` : ""}
-        ${reprovados.length ? ` Não ${reprovados.length > 1 ? "alcançaram" : "alcançou"} o percentual necessário: ${listaE(reprovados)}.` : ""}</p>`);
+        ${reprovados.length ? ` Não ${reprovados.length > 1 ? "foram eleitos" : "foi eleito"}: ${listaE(reprovados)}.` : ""}</p>`);
     } else if (modo === "membro") {
       partes.push(`<p>Votaram nesta etapa ${qtd(v)} membros. Cada candidato recebeu voto SIM, NÃO ou EM BRANCO, sendo considerado
         eleito quem obteve mais de ${r.minPercent}% de votos SIM ${r.brancosContam ? "sobre o total de votos, incluídos os votos em branco"
