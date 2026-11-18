@@ -4,7 +4,7 @@
 // Mostra nomes, cargos e fotos — nunca votos — das etapas já encerradas.
 // ================================================================
 const corpo = $("#el-corpo");
-const ORDEM_DIRETORIA = ["Presidente", "Vice-presidente", "1º Secretário", "2º Secretário", "Tesoureiro"];
+const ORDEM_DIRETORIA = ["Presidente", "Vice-presidente", "1º Superintendente", "2º Superintendente", "1º Secretário", "2º Secretário", "Tesoureiro"];
 const SECOES = [
   { key: "pastor", titulo: "Pastores" },
   { key: "presbitero", titulo: "Presbíteros" },

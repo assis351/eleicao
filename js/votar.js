@@ -72,7 +72,9 @@ function aplicarInfo(dados) {
 
 // cada etapa tem a sua "marca" de já votou (a 1ª mantém a chave antiga)
 function chaveAparelho() {
-  const base = "votou_" + estado.info.title;
+  // cada votação (Assembleia / EBD) tem as suas marcas; a Assembleia mantém as chaves antigas
+  const el = estado.info.eleicao_id && estado.info.eleicao_id !== "assembleia" ? estado.info.eleicao_id + "_" : "";
+  const base = "votou_" + el + estado.info.title;
   return estado.info.fase > 1 ? `${base}_etapa${estado.info.fase}` : base;
 }
 function jaVotouNesteAparelho() {

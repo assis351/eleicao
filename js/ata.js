@@ -13,14 +13,17 @@ const ATA_PADRAO = {
   observacoes: "",
 };
 
+// cada votação (Assembleia / EBD) guarda os seus dados da ata
+const ehEBD = () => typeof ELEICAO !== "undefined" && ELEICAO.id && ELEICAO.id !== "assembleia";
+const chaveAta = () => (ehEBD() ? "ata_dados_" + ELEICAO.id : "ata_dados");
 function lerDadosAta() {
   let salvo = {};
-  try { salvo = JSON.parse(localStorage.getItem("ata_dados") || "{}"); } catch { /* ok */ }
-  const d = { ...ATA_PADRAO, ...salvo };
+  try { salvo = JSON.parse(localStorage.getItem(chaveAta()) || "{}"); } catch { /* ok */ }
+  const d = { ...ATA_PADRAO, ...(ehEBD() ? { tipo: "Reunião para eleição da Diretoria da Escola Bíblica Dominical" } : {}), ...salvo };
   if (!d.data) d.data = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }); // AAAA-MM-DD
   return d;
 }
-function gravarDadosAta(d) { try { localStorage.setItem("ata_dados", JSON.stringify(d)); } catch { /* ok */ } }
+function gravarDadosAta(d) { try { localStorage.setItem(chaveAta(), JSON.stringify(d)); } catch { /* ok */ } }
 
 // ---------- formulário (janela no painel) ----------
 function abrirFormularioAta() {

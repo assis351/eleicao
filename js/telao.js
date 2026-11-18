@@ -265,8 +265,10 @@ function desenharResumo(d) {
       blocos.push([cat.label, cat.candidates.some((c) => c.status === "empate") ? "Empate" : andamento ? "Votação em andamento" : "A definir"]);
     }
   });
-  const faltam = { 2: ["Presbíteros"], 3: ["Diáconos"], 4: ["Presidente", "Vice-presidente", "1º Secretário", "2º Secretário", "Tesoureiro"], 5: ["Exame de Contas"] };
-  for (let f = d.fase + 1; f <= (d.fases || []).length; f++) (faltam[f] || []).forEach((c) => blocos.push([c, '<span style="opacity:.55">A definir</span>']));
+  // etapas que ainda faltam (vem do servidor: serve para a Assembleia e para a EBD)
+  const catalogo = d.catalogo || { categorias: [] };
+  for (let f = d.fase + 1; f <= (d.fases || []).length; f++)
+    catalogo.categorias.filter((c) => c.fase === f).forEach((c) => blocos.push([c.modo === "cargo" ? c.singular : c.label, '<span style="opacity:.55">A definir</span>']));
   palco.innerHTML = `<section class="t-resumo">
     ${blocos.map(([cargo, nome], i) => `<div class="bloco" style="animation-delay:${(i * 0.12).toFixed(2)}s">
       <div class="c">${esc(cargo)}</div><div class="n">${nome}</div></div>`).join("")}

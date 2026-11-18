@@ -3,7 +3,7 @@
 // Abas: Resultados | Etapas | Candidatos | Eleitores | Configurações
 // ================================================================
 // cargo: true = cargo da diretoria (um nome indicado só)
-const CATEGORIAS = [
+let CATEGORIAS = [
   { key: "pastor", label: "Pastores (etapa 1)", singular: "Pastor", fase: 1 },
   { key: "presbitero", label: "Presbíteros (etapa 2)", singular: "Presbítero", fase: 2 },
   { key: "diacono", label: "Diáconos (etapa 3)", singular: "Diácono", fase: 3 },
@@ -14,7 +14,7 @@ const CATEGORIAS = [
   { key: "tesoureiro", label: "Tesoureiro (etapa 4)", singular: "Tesoureiro", fase: 4, cargo: true },
   { key: "exame", label: "Exame de Contas (etapa 5)", singular: "Exame de Contas", fase: 5 },
 ];
-const FASES = [
+let FASES = [
   { n: 1, label: "Pastores", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
   { n: 2, label: "Presbíteros", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
   { n: 3, label: "Diáconos", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
@@ -58,11 +58,45 @@ $("#sair").addEventListener("click", async () => {
 
 let resultadosIniciados = false;
 let URL_PLANILHA = "";
+// ---------- Qual votação está no ar (Assembleia Geral / Diretoria da EBD) ----------
+let ELEICAO = { id: "assembleia", nome: "Assembleia Geral" };
+async function carregarCatalogo() {
+  const { ok, dados } = await chamar("results");
+  if (!ok || !dados.catalogo) return; // servidor antigo: usa as listas fixas acima
+  ELEICAO = dados.eleicao;
+  CATEGORIAS = dados.catalogo.categorias.map((c) => ({
+    key: c.key, singular: c.singular, fase: c.fase, cargo: c.modo === "cargo",
+    label: `${c.label} (etapa ${c.fase})`,
+  }));
+  FASES = dados.catalogo.fases;
+  $("#painel .topo .titulo").textContent = ELEICAO.nome;
+  const barra = $("#barra-eleicao");
+  barra.innerHTML = `
+    <span class="pequeno texto-suave">Votação no ar:</span>
+    <div class="segmentado" role="group" aria-label="Votação no ar" style="display:flex;gap:6px;flex-wrap:wrap">
+      ${dados.eleicoes.map((e) => `<button type="button" class="btn btn-pequeno ${e.id === ELEICAO.id ? "btn-principal" : "btn-contorno"}"
+        data-eleicao="${e.id}" ${e.id === ELEICAO.id ? 'aria-pressed="true"' : ""}>${esc(e.nome)}</button>`).join("")}
+    </div>
+    <span class="pequeno texto-suave" style="flex-basis:100%">Cada votação tem os seus nomes, eleitores, etapas e resultados.
+      O site mostra só a que está no ar. Para trocar, encerre antes a etapa aberta.</span>`;
+  $$("[data-eleicao]", barra).forEach((b) => b.addEventListener("click", () => trocarEleicao(b.dataset.eleicao, b.textContent.trim())));
+}
+
+async function trocarEleicao(id, nome) {
+  if (id === ELEICAO.id) return;
+  if (!confirm(`Colocar no ar a votação "${nome}"?\n\nO site e o telão passam a mostrar essa votação. Nada da outra é apagado.`)) return;
+  const { ok, status, dados } = await chamar("eleicao_trocar", { eleicao: id });
+  if (sessaoExpirou(status)) return;
+  if (!ok) return alert(dados.error || "Não foi possível trocar.");
+  location.reload();
+}
+
 async function abrirPainel() {
   $("#tela-login").classList.add("oculto");
   $("#painel").classList.remove("oculto");
   if (!resultadosIniciados) {
     resultadosIniciados = true;
+    await carregarCatalogo();
     const { ok, dados } = await chamar("settings");  // pega o link da Planilha Google
     if (ok) URL_PLANILHA = dados.spreadsheet_url;
     iniciarResultados($("#aba-resultados"), { planilhaUrl: URL_PLANILHA });
@@ -144,7 +178,7 @@ function desenharCandidatos(msg = "") {
         </div>
       </div>
       ${CATEGORIAS.find((c) => c.key === f.category)?.cargo ? `<p class="pequeno texto-suave" style="margin-top:-6px">
-        Cargo da diretoria (etapa 4): cadastre <strong>um nome só</strong> — o indicado. Para trocar, clique em "Editar" no nome atual.</p>` : ""}
+        Cargo (etapa ${CATEGORIAS.find((c) => c.key === f.category).fase}): cadastre <strong>um nome só</strong> — o indicado. Para trocar, clique em "Editar" no nome atual.</p>` : ""}
       <div class="grupo"><label class="rotulo" for="c-nome">Nome</label>
         <input id="c-nome" class="campo" required value="${esc(f.name)}" placeholder="Ex: Diac. João Silva"></div>
       <div class="grupo"><label class="rotulo" for="c-desc">Breve descrição</label>
@@ -659,13 +693,14 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     const nomes = nomesDaFase(f.n);
     const votos = (res.fases || []).find((x) => x.n === f.n)?.ballots || 0;
     // na diretoria mostra "Cargo: nome" na ordem dos cargos (e quais cargos estão sem indicado)
-    const itens = f.n === 4
-      ? CATEGORIAS.filter((k) => k.fase === 4).map((k) => {
+    const variosCargos = CATEGORIAS.filter((k) => k.fase === f.n && k.cargo).length > 1;
+    const itens = variosCargos
+      ? CATEGORIAS.filter((k) => k.fase === f.n).map((k) => {
           const ns = nomes.filter((x) => x.category === k.key);
           return `<li><strong>${esc(k.singular)}:</strong> ${ns.length ? ns.map((x) => esc(x.name)).join(" / ") : '<span style="color:var(--nao-tx,var(--vermelho-700))">sem indicado</span>'}${ns.length > 1 ? ' <span style="color:var(--nao-tx,var(--vermelho-700))">(deixe só um)</span>' : ""}</li>`;
         })
       : nomes.map((x) => `<li>${esc(x.name)}</li>`);
-    const lista = nomes.length || f.n === 4
+    const lista = nomes.length || variosCargos
       ? `<ul class="pequeno" style="margin:8px 0 0;padding-left:18px">${itens.join("")}</ul>`
       : `<p class="pequeno" style="color:var(--nao-tx,var(--vermelho-700))">Nenhum nome ainda — cadastre na aba Candidatos.</p>`;
     const resultado = estadoF !== "futura" && cargosTexto(f.n).length

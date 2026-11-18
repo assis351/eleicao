@@ -58,7 +58,8 @@ async function verificarEtapa() {
 
 // mesma "marca" que o votar.js grava quando o voto é confirmado
 function aparelhoJaVotou(info) {
-  const base = "votou_" + info.title;
+  const el = info.eleicao_id && info.eleicao_id !== "assembleia" ? info.eleicao_id + "_" : "";
+  const base = "votou_" + el + info.title;
   const chave = info.fase > 1 ? `${base}_etapa${info.fase}` : base;
   try { return !!localStorage.getItem(chave); } catch { return false; }
 }
