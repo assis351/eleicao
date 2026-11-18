@@ -64,12 +64,12 @@
       $("#titulo").textContent = dados.title;
       if (dados.logo_url) $("#logo").src = dados.logo_url;
 
-      // texto conforme a etapa (1: Pastores/Presbíteros/Diáconos; 2: Tesoureiro; 3: Secretários; 4: Exame de Contas)
-      if (dados.fase > 1) {
+      // texto conforme a etapa (1 Pastores, 2 Presbíteros, 3 Diáconos, 4 Diretoria, 5 Exame de Contas)
+      if (dados.fase) {
         $("#chamada").innerHTML = `Etapa ${dados.fase} de ${(dados.fases || []).length}: escolha em oração para <strong>${esc(dados.fase_label)}</strong>. Seu voto é secreto.`;
       }
       if (dados.status === "open") {
-        acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação${dados.fase > 1 ? " · " + esc(dados.fase_label) : ""}</a>`;
+        acao.innerHTML = `<a href="votar.html" class="btn btn-principal btn-grande largura-total">Iniciar Votação${dados.fase ? " · " + esc(dados.fase_label) : ""}</a>`;
       } else if (dados.status === "paused") {
         acao.innerHTML = `<div class="caixa-status" style="background:var(--verde-100)">
           <strong>Aguarde a próxima etapa</strong>
