@@ -4,7 +4,7 @@
 // Mostra nomes, cargos e fotos — nunca votos — das etapas já encerradas.
 // ================================================================
 const corpo = $("#el-corpo");
-const ORDEM_DIRETORIA = ["Presidente", "Vice-presidente", "Tesoureiro", "1º Secretário", "2º Secretário"];
+const ORDEM_DIRETORIA = ["Presidente", "Vice-presidente", "1º Secretário", "2º Secretário", "Tesoureiro"];
 const SECOES = [
   { key: "pastor", titulo: "Pastores" },
   { key: "presbitero", titulo: "Presbíteros" },
@@ -52,7 +52,7 @@ async function carregar() {
   // diretoria: presidência, tesoureiro e secretários
   const cargoDe = {};   // nome -> cargos da diretoria (para a etiqueta)
   const diretoria = [];
-  cats.filter((c) => c.fase > 1 && c.key !== "exame").forEach((c) => c.pessoas.forEach((p) => {
+  cats.filter((c) => c.modo === "cargo").forEach((c) => c.pessoas.forEach((p) => {
     diretoria.push(p);
     (cargoDe[p.name] = cargoDe[p.name] || []).push(p.cargo);
   }));

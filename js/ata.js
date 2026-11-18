@@ -176,7 +176,23 @@ async function montarAta(a) {
     const cats = r.categories.filter((c) => c.fase === f.n);
     const v = votosFase(f.n);
     partes.push(`<h2>${idx + 1}ª etapa: ${tit(f.label)}</h2>`);
-    if (f.n === 1) {
+    const modo = (cats[0] && cats[0].modo) || "membro";
+    if (modo === "cargo") {
+      // diretoria: votação única, cargo a cargo, um nome indicado por cargo
+      partes.push(`<p>Votaram nesta etapa ${qtd(v)} membros, em votação única para a diretoria, cargo a cargo, com voto SIM, NÃO
+        ou EM BRANCO para o nome indicado a cada cargo, sendo considerado eleito o indicado que obteve mais de ${r.minPercent}% de votos SIM
+        ${r.brancosContam ? "sobre o total de votos, incluídos os votos em branco" : "sobre os votos válidos (SIM e NÃO)"}.</p>`);
+      const linhas = [], eleitos = [], reprovados = [];
+      cats.forEach((cat) => cat.candidates.forEach((c) => {
+        linhas.push([`<strong>${esc(cat.singular)}</strong>`, esc(c.name), c.yes, c.no, c.blank || 0, pctAta(c.percent), situacao(c)]);
+        if (c.status === "eleito") { eleitos.push(`para ${esc(cat.singular)}: ${esc(c.name)}, com ${qtd(c.yes)} voto${c.yes === 1 ? "" : "s"} SIM`); quadro.push([cat.singular, c.name]); }
+        else if (c.status === "nao_eleito") reprovados.push(`${esc(c.name)} (${esc(cat.singular)})`);
+      }));
+      partes.push(tabela(["Cargo", "Indicado", "SIM", "NÃO", "BRANCO", "% SIM", "Resultado"], linhas));
+      const juntarE = (l) => l.length <= 1 ? l.join("") : l.slice(0, -1).join("; ") + "; e " + l[l.length - 1];
+      partes.push(`<p>${eleitos.length ? `${eleitos.length > 1 ? "Foram eleitos" : "Foi eleito"} ${juntarE(eleitos)}.` : ""}
+        ${reprovados.length ? ` Não ${reprovados.length > 1 ? "alcançaram" : "alcançou"} o percentual necessário: ${listaE(reprovados)}.` : ""}</p>`);
+    } else if (modo === "membro") {
       partes.push(`<p>Votaram nesta etapa ${qtd(v)} membros. Cada candidato recebeu voto SIM, NÃO ou EM BRANCO, sendo considerado
         eleito quem obteve mais de ${r.minPercent}% de votos SIM ${r.brancosContam ? "sobre o total de votos, incluídos os votos em branco"
         : "sobre os votos válidos (SIM e NÃO), não sendo os votos em branco computados nesse cálculo"}.</p>`);

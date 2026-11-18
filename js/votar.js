@@ -2,10 +2,11 @@
 // FLUXO DE VOTAÇÃO
 // A cédula muda conforme a ETAPA atual (o admin controla no painel):
 // Em toda cédula há a opção BRANCO (contada, mas fora da porcentagem).
-//   Etapa 1: Pastores -> Presbíteros -> Diáconos  (SIM, NÃO ou BRANCO em cada nome)
-//   Etapa 2: Tesoureiro                           (escolhe 1 nome)
-//   Etapa 3: 1º e 2º Secretário                   (SIM ou NÃO em cada nome)
-//   Etapa 4: Exame de Contas                      (SIM ou NÃO em cada nome)
+//   Etapas 1, 2 e 3: Pastores, Presbíteros, Diáconos (SIM, NÃO ou BRANCO em cada nome)
+//   Etapa 4: Diretoria — uma tela por cargo, um nome indicado em cada:
+//            Presidente -> Vice-presidente -> 1º Secretário -> 2º Secretário -> Tesoureiro
+//            (com um nome só, ao marcar SIM/NÃO/BRANCO já passa para o próximo cargo)
+//   Etapa 5: Exame de Contas (SIM, NÃO ou BRANCO em cada nome)
 // Telas: 0 identificação (opcional) -> uma tela por categoria -> revisão -> comprovante
 // ================================================================
 const estado = {
@@ -51,7 +52,7 @@ function aplicarInfo(dados) {
   estado.info = { ...dados, candidates: embaralhar(dados.candidates || []) };
   $("#selo").innerHTML = seloLogo(dados.logo_url, 42);
   $("#igreja").textContent = dados.church_name;
-  $("#titulo").textContent = dados.fase > 1 ? `${dados.title} · ${dados.fase_label}` : dados.title;
+  $("#titulo").textContent = dados.fase ? `${dados.title} · ${dados.fase_label}` : dados.title;
   if (dados.usar_codigo) {
     // Com código: o próprio código controla 1 voto por etapa (o aparelho pode ser emprestado)
     estado.modoCodigo = true;
@@ -276,11 +277,15 @@ function telaCedula(cat) {
 
   const redesenhar = () => { const y = window.scrollY; telaCedula(cat); window.scrollTo(0, y); };
   // SIM / NÃO / BRANCO
+  // tela de um nome só (cargos da diretoria): ao marcar, mostra a escolha e já passa para o próximo cargo
+  const umSo = !escolha && lista.length === 1;
+  const etapaAgora = estado.etapa;
   $$(".botao-voto[data-valor]", app).forEach((b) =>
     b.addEventListener("click", () => {
       const v = b.dataset.valor;
       estado.respostas[b.dataset.id] = v === "sim" ? true : v === "nao" ? false : "branco";
       redesenhar();
+      if (umSo) setTimeout(() => { if (estado.etapa === etapaAgora) irPara(etapaAgora + 1); }, 650);
     })
   );
   // em branco no "escolher 1 nome": marca todos da categoria como "branco"

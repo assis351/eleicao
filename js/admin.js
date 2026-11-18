@@ -2,21 +2,24 @@
 // PAINEL ADMINISTRATIVO
 // Abas: Resultados | Etapas | Candidatos | Eleitores | Configurações
 // ================================================================
+// cargo: true = cargo da diretoria (um nome indicado só)
 const CATEGORIAS = [
-  { key: "pastor", label: "Pastores", singular: "Pastor", fase: 1 },
-  { key: "presbitero", label: "Presbíteros", singular: "Presbítero", fase: 1 },
-  { key: "diacono", label: "Diáconos", singular: "Diácono", fase: 1 },
-  { key: "presidencia", label: "Presidente e Vice (etapa 2)", singular: "Presidência", fase: 2 },
-  { key: "tesoureiro", label: "Tesoureiro (etapa 3)", singular: "Tesoureiro", fase: 3 },
-  { key: "secretario", label: "1º e 2º Secretário (etapa 4)", singular: "Secretário", fase: 4 },
+  { key: "pastor", label: "Pastores (etapa 1)", singular: "Pastor", fase: 1 },
+  { key: "presbitero", label: "Presbíteros (etapa 2)", singular: "Presbítero", fase: 2 },
+  { key: "diacono", label: "Diáconos (etapa 3)", singular: "Diácono", fase: 3 },
+  { key: "presidente", label: "Presidente (etapa 4)", singular: "Presidente", fase: 4, cargo: true },
+  { key: "vice", label: "Vice-presidente (etapa 4)", singular: "Vice-presidente", fase: 4, cargo: true },
+  { key: "secretario1", label: "1º Secretário (etapa 4)", singular: "1º Secretário", fase: 4, cargo: true },
+  { key: "secretario2", label: "2º Secretário (etapa 4)", singular: "2º Secretário", fase: 4, cargo: true },
+  { key: "tesoureiro", label: "Tesoureiro (etapa 4)", singular: "Tesoureiro", fase: 4, cargo: true },
   { key: "exame", label: "Exame de Contas (etapa 5)", singular: "Exame de Contas", fase: 5 },
 ];
 const FASES = [
-  { n: 1, label: "Pastores, Presbíteros e Diáconos", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
-  { n: 2, label: "Presidente e Vice-presidente", como: "Candidatos = pastores eleitos na etapa 1. SIM, NÃO ou BRANCO; 1º lugar = Presidente, 2º lugar = Vice-presidente, os demais continuam Pastor." },
-  { n: 3, label: "Tesoureiro", como: "Candidatos = presbíteros eleitos na etapa 1. Cada membro escolhe 1 nome (ou vota em branco); o mais votado é o Tesoureiro." },
-  { n: 4, label: "1º e 2º Secretário", como: "Candidatos = presbíteros eleitos, menos o Tesoureiro. SIM, NÃO ou BRANCO; 1º lugar = 1º Secretário, 2º lugar = 2º Secretário." },
-  { n: 5, label: "Exame de Contas", como: "Você cadastra os nomes na hora (aba Candidatos). SIM, NÃO ou BRANCO; os mais votados ocupam as vagas." },
+  { n: 1, label: "Pastores", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
+  { n: 2, label: "Presbíteros", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
+  { n: 3, label: "Diáconos", como: "SIM, NÃO ou BRANCO em cada nome. Eleito quem passar do % mínimo." },
+  { n: 4, label: "Diretoria", como: "Uma votação só, cargo a cargo: Presidente → Vice-presidente → 1º Secretário → 2º Secretário → Tesoureiro. Um nome indicado em cada cargo (cadastre ou troque na aba Candidatos). SIM, NÃO ou BRANCO; fica com o cargo quem passar do % mínimo." },
+  { n: 5, label: "Exame de Contas", como: "Você cadastra os nomes na aba Candidatos. SIM, NÃO ou BRANCO; os mais votados ocupam as vagas." },
 ];
 
 // ---------- Login ----------
@@ -140,6 +143,8 @@ function desenharCandidatos(msg = "") {
           ${CATEGORIAS.map((c) => `<button type="button" data-cat="${c.key}" class="${f.category === c.key ? "ativo" : ""}">${c.singular}</button>`).join("")}
         </div>
       </div>
+      ${CATEGORIAS.find((c) => c.key === f.category)?.cargo ? `<p class="pequeno texto-suave" style="margin-top:-6px">
+        Cargo da diretoria (etapa 4): cadastre <strong>um nome só</strong> — o indicado. Para trocar, clique em "Editar" no nome atual.</p>` : ""}
       <div class="grupo"><label class="rotulo" for="c-nome">Nome</label>
         <input id="c-nome" class="campo" required value="${esc(f.name)}" placeholder="Ex: Diac. João Silva"></div>
       <div class="grupo"><label class="rotulo" for="c-desc">Breve descrição</label>
@@ -653,13 +658,17 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     const estadoF = f.n < atual ? "concluida" : f.n === atual ? "atual" : "futura";
     const nomes = nomesDaFase(f.n);
     const votos = (res.fases || []).find((x) => x.n === f.n)?.ballots || 0;
-    let lista = "";
-    if (f.n === 1) lista = "";
-    else if (estadoF === "futura") lista = `<p class="pequeno texto-suave">A lista será montada quando você avançar para esta etapa.</p>`;
-    else lista = nomes.length
-      ? `<ul class="pequeno" style="margin:8px 0 0;padding-left:18px">${nomes.map((x) => `<li>${esc(x.name)}</li>`).join("")}</ul>`
-      : `<p class="pequeno" style="color:var(--nao-tx,var(--vermelho-700))">Nenhum candidato ainda — cadastre na aba Candidatos.</p>`;
-    const resultado = f.n > 1 && estadoF !== "futura" && cargosTexto(f.n).length
+    // na diretoria mostra "Cargo: nome" na ordem dos cargos (e quais cargos estão sem indicado)
+    const itens = f.n === 4
+      ? CATEGORIAS.filter((k) => k.fase === 4).map((k) => {
+          const ns = nomes.filter((x) => x.category === k.key);
+          return `<li><strong>${esc(k.singular)}:</strong> ${ns.length ? ns.map((x) => esc(x.name)).join(" / ") : '<span style="color:var(--nao-tx,var(--vermelho-700))">sem indicado</span>'}${ns.length > 1 ? ' <span style="color:var(--nao-tx,var(--vermelho-700))">(deixe só um)</span>' : ""}</li>`;
+        })
+      : nomes.map((x) => `<li>${esc(x.name)}</li>`);
+    const lista = nomes.length || f.n === 4
+      ? `<ul class="pequeno" style="margin:8px 0 0;padding-left:18px">${itens.join("")}</ul>`
+      : `<p class="pequeno" style="color:var(--nao-tx,var(--vermelho-700))">Nenhum nome ainda — cadastre na aba Candidatos.</p>`;
+    const resultado = estadoF !== "futura" && cargosTexto(f.n).length
       ? `<p class="pequeno" style="margin:8px 0 0"><strong>Resultado:</strong> ${cargosTexto(f.n).map(esc).join(" · ")}</p>` : "";
     const selo = estadoF === "concluida" ? '<span class="etiqueta eleito">Concluída</span>'
       : estadoF === "atual" ? `<span class="etiqueta ${aberta ? "primeiro" : "neutra"}">${aberta ? "Votação aberta" : "Votação encerrada"}</span>`
@@ -684,8 +693,8 @@ async function abaEtapas(msg = "", tipoMsg = "info") {
     if (prox && !votosAtual) botoes += `<p class="pequeno texto-suave">Esta etapa ainda não tem votos. Abra a votação; depois de encerrar,
       aparece aqui o botão para preparar a etapa ${prox.n} (${prox.label}).</p>`;
     if (prox && votosAtual) botoes += `<button class="btn btn-principal btn-grande" data-acao="fase_avancar">Preparar etapa ${prox.n} · ${prox.label} →</button>
-      <p class="pequeno texto-suave">"Preparar" monta a lista da próxima etapa com base no resultado desta. Ela começa
-      <strong>encerrada</strong>: confira os nomes e depois clique em "Abrir votação".</p>`;
+      <p class="pequeno texto-suave">A próxima etapa começa <strong>encerrada</strong>: confira os nomes (aba Candidatos)
+      e depois clique em "Abrir votação".</p>`;
   }
 
   // quórum: quantos dos presentes já votaram nesta etapa
@@ -819,7 +828,9 @@ async function acaoEtapa(acao, botao) {
     fase_zerar: "Votos desta etapa apagados.",
   };
   if (!ok) return abaEtapas(dados.error || "Não foi possível concluir.", "erro");
-  abaEtapas(acao === "fase_avancar" ? `Etapa ${dados.fase} preparada. ${dados.aviso || ""} Confira os nomes e clique em "Abrir votação".` : mensagens[acao]);
+  abaEtapas(acao === "fase_avancar" ? `Etapa ${dados.fase} preparada. ${dados.aviso || ""} Confira os nomes e clique em "Abrir votação".`
+    : mensagens[acao] + (dados.aviso ? " " + dados.aviso : ""),
+    /atenção|falta|deixe|sem nome/i.test(dados.aviso || "") ? "aviso" : "info");
 }
 
 // Cartões de código para imprimir e recortar (10 por folha A4), cada um com QR Code que já abre a cédula

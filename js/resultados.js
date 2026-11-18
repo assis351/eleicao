@@ -79,12 +79,12 @@ function iniciarResultados(container, opcoes = {}) {
       </div>
 
       <p class="pequeno texto-suave">Os percentuais de SIM, NÃO e BRANCO são sobre todos os votos daquele nome.
-        Etapa 1: é <strong>eleito</strong> quem tiver <strong>mais de ${r.minPercent}%</strong> de SIM
+        É <strong>eleito</strong> quem tiver <strong>mais de ${r.minPercent}%</strong> de SIM
         ${r.brancosContam ? "contando os votos em branco" : "sobre os votos válidos (SIM + NÃO; o branco não entra nessa conta)"}.
-        ${r.fase > 1 ? "Da etapa 2 em diante, os cargos vão para os mais votados (1º lugar, 2º lugar…)." : ""}</p>
+        ${r.fase >= 5 ? "No Exame de Contas, os mais votados ocupam as vagas." : ""}</p>
 
-      ${r.fase > 1 ? quadroCargos(r) : ""}
-      ${r.categories.slice().reverse().map(blocoCategoria).join("")}`;
+      ${r.categories.some((c) => c.modo && c.modo !== "membro") ? quadroCargos(r) : ""}
+      ${r.categories.slice().sort((a, b) => b.fase - a.fase).map(blocoCategoria).join("")}`;
 
     $$("[data-exportar]", container).forEach((b) =>
       b.addEventListener("click", async () => {
@@ -99,14 +99,17 @@ function iniciarResultados(container, opcoes = {}) {
     desenharGraficos(r);
   }
 
-  // resumo "quem ficou com cada cargo" (etapas 2 a 4)
+  // resumo "quem ficou com cada cargo" (diretoria e Exame de Contas)
   function quadroCargos(r) {
     const linhas = [];
-    r.categories.filter((c) => c.fase > 1).forEach((cat) => {
+    r.categories.filter((c) => c.modo && c.modo !== "membro").forEach((cat) => {
       const ganhos = cat.candidates.filter((c) => c.status === "eleito");
       const empate = cat.candidates.some((c) => c.status === "empate");
+      const reprovado = cat.modo === "cargo" && cat.candidates.find((c) => c.status === "nao_eleito");
       if (ganhos.length) ganhos.filter((c) => !cat.demais || c.cargo !== cat.demais).forEach((c) => linhas.push([c.cargo, c.name]));
-      else linhas.push([cat.label, empate ? "Empate — refazer a votação" : (cat.fase === r.fase && r.faseAberta ? "Votação em andamento" : "Aguardando votos")]);
+      else linhas.push([cat.label, empate ? "Empate — refazer a votação"
+        : (cat.fase === r.fase && r.faseAberta ? "Votação em andamento"
+        : reprovado ? `Não eleito (${reprovado.name})` : "Aguardando votos")]);
       if (empate && ganhos.length) linhas.push([cat.label, "Empate em uma das vagas"]);
     });
     return `<section class="card pad mt">
@@ -119,7 +122,7 @@ function iniciarResultados(container, opcoes = {}) {
   function blocoCategoria(cat) {
     const eleitos = cat.candidates.filter((c) => c.status === "eleito").length;
     const totalBrancos = cat.tipo === "escolha" ? cat.blanks || 0 : cat.candidates.reduce((s, c) => s + (c.blank || 0), 0);
-    const info = (cat.fase > 1 ? `${cat.ballots} voto(s)` : `${eleitos} eleito(s) de ${cat.candidates.length}`)
+    const info = (cat.modo === "cargo" ? `${cat.ballots} voto(s)` : `${eleitos} eleito(s) de ${cat.candidates.length}`)
       + ` · ${totalBrancos} em branco`;
     return `<section class="card categoria-res">
       <header><h2><small style="font-size:13px;opacity:.75;display:block">Etapa ${cat.fase}</small>${cat.label}</h2><span>${info}</span></header>
@@ -149,18 +152,19 @@ function iniciarResultados(container, opcoes = {}) {
 
   function itemRanking(c, cat) {
     const escolha = cat.tipo === "escolha";
-    const selos = cat.fase === 1
+    const selos = cat.modo === "membro"
       ? `${c.status === "eleito" ? '<span class="etiqueta eleito">Eleito</span>' : ""}
          ${c.status === "nao_eleito" ? '<span class="etiqueta nao-eleito">Não eleito</span>' : ""}`
       : `${c.status === "eleito" ? `<span class="etiqueta eleito">${esc(c.cargo)}</span>` : ""}
-         ${c.status === "empate" ? '<span class="etiqueta nao-eleito">Empate</span>' : ""}`;
+         ${c.status === "empate" ? '<span class="etiqueta nao-eleito">Empate</span>' : ""}
+         ${c.status === "nao_eleito" && cat.modo === "cargo" ? '<span class="etiqueta nao-eleito">Não eleito</span>' : ""}`;
     return `<li class="${c.status === "eleito" ? "eleito" : ""}">
       <div class="linha1">
         <span class="pos">${c.position}º</span>
         ${avatar(c.photo_url, c.name, 44)}
         <div class="info">
           <div class="nome-l">${esc(c.name)}
-            ${c.position === 1 && c.yes > 0 ? '<span class="etiqueta primeiro">1º Lugar</span>' : ""}
+            ${c.position === 1 && c.yes > 0 && cat.modo !== "cargo" ? '<span class="etiqueta primeiro">1º Lugar</span>' : ""}
             ${selos}
             ${c.status === null ? '<span class="etiqueta neutra">Sem votos</span>' : ""}
           </div>
@@ -221,7 +225,7 @@ function iniciarResultados(container, opcoes = {}) {
 
 // ---------- Exportação ----------
 const selo = (s) => (s === "eleito" ? "Eleito" : s === "nao_eleito" ? "Não eleito" : s === "empate" ? "Empate" : "Sem votos");
-const situacaoTexto = (c, cat) => (cat.fase > 1 && c.status === "eleito" ? c.cargo : cat.fase > 1 && c.status === "nao_eleito" ? "—" : selo(c.status));
+const situacaoTexto = (c, cat) => (cat.modo !== "membro" && c.status === "eleito" ? c.cargo : cat.modo === "vagas" && c.status === "nao_eleito" ? "—" : selo(c.status));
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 async function exportarPDF(r) {
@@ -248,7 +252,7 @@ async function exportarPDF(r) {
     doc.autoTable({
       startY: y + 3,
       head: [escolha ? ["Pos.", "Candidato", "Votos", "% votos", "Cargo"]
-        : ["Pos.", "Candidato", "SIM", "%", "NÃO", "%", "BRANCO", "%", cat.fase > 1 ? "Cargo" : "Situação"]],
+        : ["Pos.", "Candidato", "SIM", "%", "NÃO", "%", "BRANCO", "%", cat.modo === "membro" ? "Situação" : "Cargo"]],
       body: [...cat.candidates.map((c) => escolha
         ? [`${c.position}º`, c.name, c.yes, porcentagem(c.pctSim), situacaoTexto(c, cat)]
         : [`${c.position}º`, c.name, c.yes, porcentagem(c.pctSim), c.no, porcentagem(c.pctNao), c.blank, porcentagem(c.pctBranco), situacaoTexto(c, cat)]),
@@ -280,7 +284,7 @@ async function exportarExcel(r) {
       ? { "Posição": c.position, "Candidato": c.name, "Votos": c.yes, "% votos": n2(c.pctSim), "Cargo": situacaoTexto(c, cat) }
       : { "Posição": c.position, "Candidato": c.name, "SIM": c.yes, "% SIM": n2(c.pctSim), "NÃO": c.no, "% NÃO": n2(c.pctNao),
           "BRANCO": c.blank, "% BRANCO": n2(c.pctBranco), "% SIM p/ decidir": n2(c.percent),
-          [cat.fase > 1 ? "Cargo" : "Situação"]: situacaoTexto(c, cat) }));
+          [cat.modo === "membro" ? "Situação" : "Cargo"]: situacaoTexto(c, cat) }));
     if (cat.tipo === "escolha") linhas.push({ "Posição": "", "Candidato": "Votos em branco", "Votos": cat.blanks || 0 });
     const ws = XLSX.utils.json_to_sheet(linhas.length ? linhas : [{ Candidato: "Sem candidatos" }]);
     ws["!cols"] = [{ wch: 8 }, { wch: 34 }, { wch: 7 }, { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 8 }, { wch: 9 }, { wch: 14 }, { wch: 14 }];

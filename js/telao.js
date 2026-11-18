@@ -184,7 +184,17 @@ function desenharResultado(d) {
   let atraso = 0;
   const prox = (passo = 0.12) => (atraso += passo).toFixed(2);
 
-  if (d.fase === 1) {
+  const modo = (cats[0] && cats[0].modo) || "membro";
+  if (modo === "cargo") {
+    // diretoria: um quadro por cargo, na ordem da cédula
+    palco.innerHTML = `<section class="t-res">
+      <div class="t-col" style="max-width:1000px;width:100%;justify-self:center">
+        <h3>${esc(d.faseLabel)} <small>${votos} votos</small></h3>
+        ${cats.map((cat) => cat.candidates.map((c) => linhaCandidato({ ...c, name: `${cat.singular}: ${c.name}` }, prox(), "sim")).join("")).join("")}
+      </div></section>
+      <p class="t-nota">Eleito para o cargo o indicado com mais de ${d.minPercent}% de SIM
+        ${d.brancosContam ? "(contando os votos em branco)" : "sobre os votos válidos (o voto em branco não entra nessa conta)"}</p>`;
+  } else if (modo === "membro") {
     palco.innerHTML = `<section class="t-res" style="grid-template-columns:repeat(${cats.length}, 1fr)">
       ${cats.map((cat) => {
         const eleitos = cat.candidates.filter((c) => c.status === "eleito").length;
@@ -242,8 +252,10 @@ function desenharResumo(d) {
   const blocos = [];
   d.categories.forEach((cat) => {
     const eleitos = cat.candidates.filter((c) => c.status === "eleito");
-    if (cat.fase === 1) {
+    if (cat.modo === "membro") {
       blocos.push([cat.label, eleitos.length ? eleitos.map((c) => esc(c.name)).join("<br>") : "Nenhum eleito"]);
+    } else if (cat.modo === "cargo" && !eleitos.length && cat.candidates.some((c) => c.status === "nao_eleito")) {
+      blocos.push([cat.singular, "Não eleito"]);
     } else if (eleitos.length) {
       // quem só "continua Pastor" já aparece no bloco de Pastores
       eleitos.filter((c) => !cat.demais || c.cargo !== cat.demais)
@@ -253,7 +265,7 @@ function desenharResumo(d) {
       blocos.push([cat.label, cat.candidates.some((c) => c.status === "empate") ? "Empate" : andamento ? "Votação em andamento" : "A definir"]);
     }
   });
-  const faltam = { 2: ["Presidente", "Vice-presidente"], 3: ["Tesoureiro"], 4: ["1º Secretário", "2º Secretário"], 5: ["Exame de Contas"] };
+  const faltam = { 2: ["Presbíteros"], 3: ["Diáconos"], 4: ["Presidente", "Vice-presidente", "1º Secretário", "2º Secretário", "Tesoureiro"], 5: ["Exame de Contas"] };
   for (let f = d.fase + 1; f <= (d.fases || []).length; f++) (faltam[f] || []).forEach((c) => blocos.push([c, '<span style="opacity:.55">A definir</span>']));
   palco.innerHTML = `<section class="t-resumo">
     ${blocos.map(([cargo, nome], i) => `<div class="bloco" style="animation-delay:${(i * 0.12).toFixed(2)}s">
@@ -326,7 +338,15 @@ function precisaRevelar(d, votos) { return suspense && !d.faseAberta && votos > 
 function montarPassos(d) {
   const cats = d.categories.filter((c) => c.fase === d.fase);
   const passos = [{ t: "intro", ms: 3400 }];
-  if (d.fase === 1) {
+  const modo = (cats[0] && cats[0].modo) || "membro";
+  if (modo === "cargo") {
+    // diretoria: cargo por cargo, na ordem da cédula
+    cats.forEach((cat) => {
+      const c = cat.candidates.find((x) => x.status === "eleito");
+      if (c) { passos.push({ t: "suspense", cat, c, ms: 2800 }); passos.push({ t: "nome", cat, c, ms: 4200 }); }
+      else if (cat.candidates.length) passos.push({ t: "nenhum", cat, ms: 3600 });
+    });
+  } else if (modo === "membro") {
     cats.forEach((cat) => {
       const el = cat.candidates.filter((c) => c.status === "eleito");
       passos.push({ t: "grupo", cat, el, k: 0, ms: 2400 });
